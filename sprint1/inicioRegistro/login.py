@@ -73,6 +73,8 @@ class LoginApp:
 
         self.helpLink = tk.Label(header_frame, text="Ayuda", fg='blue', bg='#B41214', cursor='hand2', font=('Arial', 9, 'underline'))
         self.helpLink.pack(side='left')
+        # enlazar click de ayuda a un handler
+        self.helpLink.bind('<Button-1>', lambda e: self.showHelp())
         self.creditsLink = tk.Label(header_frame, text="Creditos", fg='blue', bg='#B41214', cursor='hand2', font=('Arial', 9, 'underline'))
         self.creditsLink.pack(side='left', padx=(10, 0))
 
@@ -579,6 +581,56 @@ class LoginApp:
                 self.root.destroy()
             except Exception:
                 pass
+
+    def showHelp(self):
+        """Muestra un cuadro de ayuda con información para el usuario desde un archivo .md"""
+        try:
+            # Buscar el archivo ayuda.md en el mismo directorio
+            help_file = os.path.join(os.path.dirname(__file__), 'Instrucciones de uso.md')
+            
+            # Leer el contenido del archivo
+            if os.path.exists(help_file):
+                with open(help_file, 'r', encoding='utf-8') as f:
+                    help_text = f.read()
+            else:
+                # Texto por defecto si no existe el archivo
+                help_text = "No se puede mostrar en este momento."
+            
+            # Crear ventana personalizada para mostrar el texto con scroll
+            help_window = tk.Toplevel(self.root)
+            help_window.title('Ayuda')
+            help_window.geometry('600x400')
+            
+            # Frame con scrollbar
+            frame = tk.Frame(help_window)
+            frame.pack(fill='both', expand=True, padx=10, pady=10)
+            
+            # Scrollbar
+            scrollbar = tk.Scrollbar(frame)
+            scrollbar.pack(side='right', fill='y')
+            
+            # Text widget para mostrar el contenido
+            text_widget = tk.Text(frame, wrap='word', yscrollcommand=scrollbar.set, font=('Arial', 10))
+            text_widget.pack(side='left', fill='both', expand=True)
+            text_widget.insert('1.0', help_text)
+            text_widget.config(state='disabled')  # Solo lectura
+            
+            scrollbar.config(command=text_widget.yview)
+            
+            # Botón cerrar
+            btn_close = tk.Button(help_window, text='Cerrar', command=help_window.destroy, width=10)
+            btn_close.pack(pady=(0, 10))
+            
+            # Centrar ventana
+            help_window.transient(self.root)
+            help_window.update_idletasks()
+            x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (help_window.winfo_width() // 2)
+            y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (help_window.winfo_height() // 2)
+            help_window.geometry(f'+{x}+{y}')
+            
+        except Exception as e:
+            print(f'Error mostrando ayuda: {e}')
+            messagebox.showerror('Error', f'No se pudo cargar la ayuda: {e}', parent=self.root)
 
     def _prompt_new_password_for_user(self, usuario):
         """Prompt the user twice for a new password, validate and return hashed value or None."""
