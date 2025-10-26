@@ -14,6 +14,7 @@ sys.path.insert(0, carpeta_personalizacion)
 
 from constantes import FPS
 from componentes import Boton
+from clasesAvatarsRooks import Avatars, Rooks
 
 
 class PantallaJuego:
@@ -79,14 +80,27 @@ class PantallaJuego:
         self.fuenteTitulo = pygame.font.SysFont('Arial', 65, bold=True)
         self.fuenteTorre = pygame.font.SysFont('Arial', 32, bold=True)
         
-        # === BOTONES DE TORRES ===
+        # === INSTANCIAR CLASES DE JUEGO === (MOVER ANTES DE CREAR BOTONES)
+        self.rooks = Rooks()
+        self.avatars = Avatars()
+        
+        # === MAPEO DE TORRES === (MOVER ANTES DE CREAR BOTONES)
+        # Relacionar botones con datos de torres
+        self.datosTorres = {
+            "T1": self.rooks.torreArena,
+            "T2": self.rooks.torreRoca,
+            "T3": self.rooks.torreFuego,
+            "T4": self.rooks.torreAgua
+        }
+        
+        # === DINERO INICIAL ===
+        self.dinero = 500  # Cambiar de 000 a 500 para tener dinero inicial
+        
+        # === BOTONES DE TORRES === (AHORA DESPUÉS DE datosTorres)
         self.botonesTorres = self.crearBotonesTorres()
         
         # === BOTÓN INICIAR JUEGO ===
         self.botonIniciar = self.crearBotonIniciar()
-        # ===  Dinero inicial ===
-        self.dinero = 000  
-
     
     def cargarImagenTablero(self):
         """Carga y escala la imagen del tablero"""
@@ -101,33 +115,39 @@ class PantallaJuego:
     
     def crearBotonesTorres(self):
         botones = []
+        nombresTorres = ["Arena", "Roca", "Fuego", "Agua"]
 
-        # Coordenadas base del panel de torres
-        baseX = 850   # posición X del primer botón (columna izquierda)
-        baseY = 250   # posición Y de la primera fila
-        espacioX = 240  # más separación horizontal
-        espacioY = 120  # más separación vertical
+        baseX = 850
+        baseY = 250
+        espacioX = 240
+        espacioY = 120
 
-        # Crear los 4 botones en cuadrícula 2x2
         for i in range(4):
             columna = i % 2
             fila = i // 2
+            
+            # Obtener datos de la torre
+            idTorre = f"T{i+1}"
+            torre = self.datosTorres[idTorre]
+            
+            # Texto del botón con nombre y costo
+            textoBoton = f"{nombresTorres[i]}\n₡{torre['valor']}"
+            
             boton = Boton(
                 baseX + columna * espacioX,
                 baseY + fila * espacioY,
-                220,   # 🔼 más ancho
-                90,    # 🔼 más alto
-                f"Torre {i+1}",
-                28     # fuente un poquito más grande
+                220,
+                90,
+                textoBoton,
+                24  # Fuente más pequeña para 2 líneas
             )
 
-            # Colores del tema
             boton.colorNormal = self.colorFondo.obtenerColorBoton()
             boton.colorHover = self.colorFondo.obtenerColorHoverBoton()
             boton.colorBorde = self.colorFondo.obtenerColorBorde()
             boton.colorTexto = self.colorFondo.obtenerColorTextoBoton()
 
-            boton.idTorre = f"T{i+1}"
+            boton.idTorre = idTorre
             botones.append(boton)
 
         return botones
@@ -191,17 +211,32 @@ class PantallaJuego:
         return None
     
     def colocarTorre(self, fila, columna):
-        """Coloca la torre seleccionada en la casilla"""
+        """Coloca la torre seleccionada si hay suficiente dinero"""
         if self.torreSeleccionada and self.matriz[fila][columna] is None:
-            self.matriz[fila][columna] = self.torreSeleccionada
-            print(f"✅ {self.torreSeleccionada} colocada en ({fila}, {columna})")
+            torre = self.datosTorres[self.torreSeleccionada]
+            costo = torre['valor']
+            
+            # Verificar si hay dinero suficiente
+            if self.dinero >= costo:
+                self.matriz[fila][columna] = self.torreSeleccionada
+                self.dinero -= costo  # Descontar el costo
+                print(f"✅ {self.torreSeleccionada} colocada en ({fila}, {columna})")
+                print(f"💰 Dinero restante: ${self.dinero}")
+            else:
+                print(f"❌ Dinero insuficiente. Necesitas ${costo}, tienes ${self.dinero}")
     
     def quitarTorre(self, fila, columna):
-        """Quita la torre de la casilla"""
+        """Quita la torre y devuelve el dinero"""
         if self.matriz[fila][columna] is not None:
             torreQuitada = self.matriz[fila][columna]
+            torre = self.datosTorres[torreQuitada]
+            
+            # Devolver el dinero
+            self.dinero += torre['valor']
             self.matriz[fila][columna] = None
+            
             print(f"🗑️ {torreQuitada} removida de ({fila}, {columna})")
+            print(f"💰 Dinero devuelto: ${torre['valor']} | Total: ${self.dinero}")
     
     def manejarEventos(self):
         """Procesa todos los eventos de entrada"""
