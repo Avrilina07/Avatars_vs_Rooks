@@ -59,8 +59,8 @@ class PantallaJuego:
         
         # === AJUSTES MANUALES DEL GRID (para alinear con la imagen) ===
         # Estos valores te permiten mover el grid independientemente
-        self.gridOffsetX = 123      # ← Mueve el grid a la derecha (+) o izquierda (-)
-        self.gridOffsetY = 192      # ← Mueve el grid abajo (+) o arriba (-)
+        self.gridOffsetX = 130      # ← Mueve el grid a la derecha (+) o izquierda (-)
+        self.gridOffsetY = 200      # ← Mueve el grid abajo (+) o arriba (-)
         self.gridAnchoExtra = -50   # ← Ajusta el ancho de las casillas (+/-)
         self.gridAltoExtra = -25    # ← Ajusta el alto de las casillas (+/-)
         
@@ -405,4 +405,4 @@ class PantallaJuego:
 # ============================================================================
 if __name__ == "__main__":
     print("⚠️ Este archivo debe ser importado desde otra pantalla")
-    print("Para probar, usa el archivo test.py")
+    print("Para probar, usa el archivo testJuego.py")
