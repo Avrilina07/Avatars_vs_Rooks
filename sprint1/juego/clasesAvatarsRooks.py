@@ -1,4 +1,6 @@
-# imports para las clases de Avatars y Rooks
+
+# ---CLASES CON PARÁMETROS BÁSICOS DE LOS AVATARS Y LAS TORRES---
+
 import random
 
 class Avatars:
@@ -8,8 +10,8 @@ class Avatars:
             "vida": 5,
             "daño": 1,
             "duracion_aparicion": 17,
-            "duracion_ataque_min": 1,  # ← Rango mínimo
-            "duracion_ataque_max": 5   # ← Rango máximo
+            "duracion_ataque_min": 1,  
+            "duracion_ataque_max": 5  
         } 
         self.escudero = {
             "vida": 10,
@@ -40,8 +42,8 @@ class Rooks:
             "vida": 2,
             "daño": 2,
             "valor": 50,
-            "duracion_ataque_min": 1,  # ← Rango mínimo
-            "duracion_ataque_max": 5   # ← Rango máximo
+            "duracion_ataque_min": 1, 
+            "duracion_ataque_max": 5  
         } 
         self.torreRoca = {
             "vida": 4,

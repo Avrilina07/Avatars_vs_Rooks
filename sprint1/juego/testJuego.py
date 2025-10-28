@@ -14,7 +14,6 @@ from fondo import ColoresFondoDisponibles
 from temas import ConfiguracionTemas
 from constantes import PANTALLA_COMPLETA
 from pantallaJuego import PantallaJuego
-from botones import Boton
 
 # Inicializar pygame
 pygame.init()
