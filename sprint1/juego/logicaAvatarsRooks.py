@@ -303,4 +303,164 @@ class Avatar:
         # Límite superior del grid
         limiteY = self.gridConfig["gridY"]
         return self.y <= limiteY
+
+
+class Torre:
+    """Representa una torre colocada en el tablero"""
+    
+    def __init__(self, tipo, fila, columna, datosTorre, gridConfig):
+
+        self.tipo = tipo
+        self.fila = fila
+        self.columna = columna
+        
+        # Estadísticas de la torre
+        self.vidaMax = datosTorre["vida"]
+        self.vidaActual = datosTorre["vida"]
+        self.daño = datosTorre["daño"]
+        self.valor = datosTorre["valor"]
+        
+        # Valor random para cada torre
+        self.duracionAtaque = random.randint(
+            datosTorre.get("duracion_ataque_min", 1),
+            datosTorre.get("duracion_ataque_max", 5)
+        )
+        
+        # Estado
+        self.viva = True
+        self.tiempoAtaque = 0
+        
+        # Calcular posición visual
+        self.calcularPosicion(gridConfig)
+        
+        print(f"🏰 Torre {tipo} creada en ({fila}, {columna}) - Ataque cada {self.duracionAtaque}s")
+    
+    def calcularPosicion(self, gridConfig):
+        
+        """Calcula posición visual en el grid"""
+        
+        gridX = gridConfig["gridX"]
+        gridY = gridConfig["gridY"]
+        anchoCasilla = gridConfig["anchoCasilla"]
+        altoCasilla = gridConfig["altoCasilla"]
+        
+        self.x = gridX + (self.columna * anchoCasilla) + (anchoCasilla / 2)
+        self.y = gridY + (self.fila * altoCasilla) + (altoCasilla / 2)
+    
+    def actualizar(self, avatars, fps):
+        
+        """Actualiza la torre (ataca avatars en rango)"""
+        
+        if not self.viva:
+            return
+        
+        # Buscar avatars en rango
+        avatarsEnRango = []
+        for avatar in avatars:
+            if not avatar.vivo or avatar.apareciendo:
+                continue
+            
+            if self.dentroRango(avatar):
+                avatarsEnRango.append(avatar)
+        
+        # Si hay avatars en rango, atacar al más cercano
+        if avatarsEnRango:
+            # Ordenar por distancia (más cercano primero)
+            avatarsEnRango.sort(key=lambda a: abs(a.fila - self.fila) + abs(a.columna - self.columna))
+            
+            self.atacar(avatarsEnRango[0], fps)
+    
+    def atacar(self, avatar, fps):
+        """Ataca un avatar"""
+        self.tiempoAtaque += 1
+        
+        framesPorAtaque = self.duracionAtaque * fps
+        
+        if self.tiempoAtaque >= framesPorAtaque:
+            avatar.recibirDaño(self.daño)
+            self.tiempoAtaque = 0
+            print(f"⚔️ Torre {self.tipo} ({self.fila}, {self.columna}) atacó {avatar.tipo}")
+    
+    def dentroRango(self, avatar):
+        """Verifica si un avatar está en la misma columna que la torre"""
+        # Las torres solo atacan avatars de su columna
+        return self.columna == avatar.columna
+    
+    def recibirDaño(self, daño):
+        """Recibe daño de proyectiles"""
+        self.vidaActual -= daño
+        
+        if self.vidaActual <= 0:
+            self.viva = False
+            print(f"💥 Torre {self.tipo} destruida en ({self.fila}, {self.columna})")
+            return True
+        
+        return False
+    
+    def dibujar(self, pantalla):
+        """Dibuja la torre con barra de vida.
+        Los siguientes datos se pueden modificar para añadir las imágenes finales para el juego"""
+        if not self.viva:
+            return
+        
+        # Colores por tipo de torre
+        colores = {
+            "T1": (194, 178, 128),  # Arena (beige)
+            "T2": (128, 128, 128),  # Roca (gris)
+            "T3": (255, 100, 0),    # Fuego (naranja)
+            "T4": (0, 100, 255)     # Agua (azul)
+        }
+        
+        color = colores.get(self.tipo, (255, 255, 255))
+        
+        # Tamaño de la torre
+        radio = 25
+        
+        # Dibujar torre
+        pygame.draw.circle(pantalla, color, (int(self.x), int(self.y)), radio)
+        pygame.draw.circle(pantalla, (0, 0, 0), (int(self.x), int(self.y)), radio, 3)
+        
+        # Dibujar barra de vida
+        self.dibujarBarraVida(pantalla, radio)
+        
+        # Dibujar rango de ataque (opcional para debug) (quitar el # al siguiente comentario si se quiere aplicar)
+        # self.dibujarRangoAtaque(pantalla)
+    
+    def dibujarBarraVida(self, pantalla, radio):
+        """Dibuja barra de vida sobre la torre"""
+        anchoBarraMax = radio * 2
+        altoBarraVida = 6
+        
+        x = self.x - radio
+        y = self.y - radio - 15
+        
+        porcentajeVida = max(0, self.vidaActual / self.vidaMax)
+        anchoBarraActual = anchoBarraMax * porcentajeVida
+        
+        # Fondo (rojo)
+        pygame.draw.rect(pantalla, (255, 0, 0), (x, y, anchoBarraMax, altoBarraVida))
+        
+        # Vida actual (verde)
+        pygame.draw.rect(pantalla, (0, 255, 0), (x, y, anchoBarraActual, altoBarraVida))
+        
+        # Borde
+        pygame.draw.rect(pantalla, (255, 255, 255), (x, y, anchoBarraMax, altoBarraVida), 2)
+    
+    def dibujarRangoAtaque(self, pantalla):
+        """Dibuja el rango de ataque (para debug)"""
+        # Calcular el área del rango
+        gridX = self.gridConfig.get("gridX", 0)
+        gridY = self.gridConfig.get("gridY", 0)
+        anchoCasilla = self.gridConfig.get("anchoCasilla", 100)
+        altoCasilla = self.gridConfig.get("altoCasilla", 100)
+        
+        # Dibujar rectángulo del rango
+        x1 = gridX + (self.columna - self.rangoAtaque) * anchoCasilla
+        y1 = gridY + (self.fila - self.rangoAtaque) * altoCasilla
+        ancho = (2 * self.rangoAtaque + 1) * anchoCasilla
+        alto = (2 * self.rangoAtaque + 1) * altoCasilla
+        
+        pygame.draw.rect(pantalla, (255, 255, 0), (x1, y1, ancho, alto), 2)
+
+
         return len(self.torres) == 0
