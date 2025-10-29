@@ -463,4 +463,196 @@ class Torre:
         pygame.draw.rect(pantalla, (255, 255, 0), (x1, y1, ancho, alto), 2)
 
 
+class GestorAvatars:
+    """Gestiona la aparición, movimiento y ataques de todos los avatars"""
+    
+    def __init__(self, gridConfig, dificultad="Facil", fps=60):
+
+        self.gridConfig = gridConfig
+        self.fps = fps
+        self.avatarsActivos = []
+        
+        # Config por dificultad
+        self.dificultad = dificultad
+        self.configurarDificultad()
+        
+        # Estado del juego
+        self.juegoActivo = False
+        self.jugadorPerdio = False
+        self.jugadorGano = False
+        self.causaResultado = ""
+        
+        # Temporizador de partida
+        self.tiempoTranscurrido = 0  # En frames
+        self.tiempoLimiteFrames = self.tiempoLimite * fps  # Convertir a frames
+        
+        # Control de spawn
+        self.tiempoSpawn = 0
+        
+        # Instanciar clase Avatars para obtener datos
+        self.datosAvatars = Avatars()
+        
+        # Probabilidades de aparición (puede modificarse o eliminarse según preferencia del cliente)
+        self.probabilidades = {
+            "flechador": 40,
+            "escudero": 30,
+            "lenador": 20,
+            "canibal": 10
+        }
+    
+    def configurarDificultad(self):
+        """Configura parámetros según la dificultad"""
+        configuraciones = {
+            
+            # Intervalos de spawn ya calculados para no calcularlos cada vez que se necesite
+            # Sujeto a cambios según gusto del cliente
+            
+            "Facil": {
+                "tiempoLimite": 90,      # 1:30 minutos
+                "intervaloSpawn": 3.0    # 3 segundos base
+            },
+            "Intermedio": {
+                "tiempoLimite": 120,     # 2:00 minutos
+                "intervaloSpawn": 2.4    # 3 * 0.80 = 2.4 segundos (spawn 25% más rápido)
+            },
+            "Dificil": {
+                "tiempoLimite": 150,     # 2:30 minutos
+                "intervaloSpawn": 1.92   # 2.4 * 0.80 = 1.92 segundos (spawn 50% más rápido que Fácil)
+            }
+        }
+        
+        config = configuraciones.get(self.dificultad, configuraciones["Facil"])
+        
+        self.tiempoLimite = config["tiempoLimite"]
+        self.intervaloSpawn = int(config["intervaloSpawn"] * self.fps)  # Convertir a frames
+        
+        print(f"⚙️ Dificultad: {self.dificultad}")
+        print(f"⏱️ Tiempo límite: {self.tiempoLimite}s ({self.tiempoLimite//60}:{self.tiempoLimite%60:02d})")
+        print(f"👥 Intervalo spawn: {config['intervaloSpawn']:.2f}s")
+    
+    def iniciar(self):
+        """Inicia el sistema de spawneo"""
+        self.juegoActivo = True
+        self.tiempoTranscurrido = 0
+        print(f"🎮 Juego iniciado - {self.dificultad}")
+    
+    def actualizar(self, torres):
+        
+        """Actualiza todos los avatars y sus proyectiles"""
+        
+        if not self.juegoActivo:
+            return
+        
+        # Actualiza temporizador
+        self.tiempoTranscurrido += 1
+        
+        # Verifica victoria
+        if self.tiempoTranscurrido >= self.tiempoLimiteFrames:
+            self.jugadorGano = True
+            self.causaResultado = f"¡Sobreviviste {self.tiempoLimite}s!"
+            self.juegoActivo = False
+            print(f"🎉 ¡VICTORIA! {self.causaResultado}")
+            return
+        
+        # Spawn de nuevos avatars
+        self.actualizarSpawn()
+        
+        # Actualizar cada avatar
+        for avatar in self.avatarsActivos[:]:
+            if not avatar.vivo:
+                self.avatarsActivos.remove(avatar)
+                continue
+            
+            # Actualizar avatar pasando las torres para detección de colisiones
+            avatar.actualizar(self.fps, torres)
+            
+            # Condición de derrota
+            if avatar.llegoPantallaArriba():
+                self.jugadorPerdio = True
+                self.causaResultado = f"Un {avatar.tipo} llegó a la base"
+                self.juegoActivo = False
+                print(f"💀 ¡DERROTA! {self.causaResultado}")
+                return
+            
+            # Verificar colisiones de proyectiles con torres
+            for proyectil in avatar.proyectiles:
+                for torre in torres:
+                    if proyectil.colisionaConTorre(torre):
+                        # Proyectil impacta torre
+                        torre.recibirDaño(proyectil.daño)
+                        proyectil.activo = False
+                        print(f"💥 Proyectil de {avatar.tipo} impactó torre en ({torre.fila}, {torre.columna})")
+                        break
+    
+    def actualizarSpawn(self):
+        """Controla el spawn continuo de avatars"""
+        # Incrementar contador de spawn
+        self.tiempoSpawn += 1
+        
+        # Spawnear nuevo avatar cada X frames
+        if self.tiempoSpawn >= self.intervaloSpawn:
+            self.spawnearAvatar()
+            self.tiempoSpawn = 0
+    
+    def spawnearAvatar(self):
+        """Crea un nuevo avatar en la fila inferior"""
+        # 0-4 para tablero 5 columnas
+        columna = random.randint(0, 4)
+        
+        # última fila para tablero 9 filas
+        fila = 8
+        
+        # Seleccionar tipo según probabilidades
+        tipo = self.seleccionarTipoAvatar()
+        
+        # Obtener datos del avatar
+        datosAvatar = getattr(self.datosAvatars, tipo)
+        
+        # Crear avatar
+        avatar = Avatar(tipo, fila, columna, datosAvatar, self.gridConfig)
+        self.avatarsActivos.append(avatar)
+        
+        tiempoRestante = (self.tiempoLimiteFrames - self.tiempoTranscurrido) / self.fps
+        print(f"👤 {tipo} spawneado en columna {columna} (Tiempo restante: {int(tiempoRestante)}s)")
+    
+    def seleccionarTipoAvatar(self):
+        """Selecciona tipo de avatar según probabilidades"""
+        # Crear lista ponderada
+        tipos = []
+        for tipo, prob in self.probabilidades.items():
+            tipos.extend([tipo] * prob)
+        
+        return random.choice(tipos)
+    
+    def dibujar(self, pantalla):
+        """Dibuja todos los avatars y sus proyectiles"""
+        for avatar in self.avatarsActivos:
+            avatar.dibujar(pantalla)
+    
+    def obtenerTiempoRestante(self):
+        """Retorna el tiempo restante en segundos"""
+        if not self.juegoActivo:
+            return 0
+        
+        framesRestantes = self.tiempoLimiteFrames - self.tiempoTranscurrido
+        return max(0, framesRestantes / self.fps)
+    
+    def obtenerEstadisticas(self):
+        """Retorna estadísticas actuales del juego"""
+        tiempoRestante = self.obtenerTiempoRestante()
+        minutos = int(tiempoRestante // 60)
+        segundos = int(tiempoRestante % 60)
+        
+        return {
+            "dificultad": self.dificultad,
+            "tiempoRestante": tiempoRestante,
+            "tiempoRestanteStr": f"{minutos}:{segundos:02d}",
+            "avatarsVivos": len(self.avatarsActivos),
+            "juegoActivo": self.juegoActivo,
+            "perdio": self.jugadorPerdio,
+            "gano": self.jugadorGano,
+            "resultado": self.causaResultado
+        }
+
+
         return len(self.torres) == 0
