@@ -655,4 +655,78 @@ class GestorAvatars:
         }
 
 
+class GestorTorres:
+    """Gestiona todas las torres del tablero"""
+    
+    def __init__(self, matriz, datosTorres, gridConfig):
+        
+        self.torres = []
+        self.gridConfig = gridConfig
+        self.datosTorres = datosTorres  # Guarda referencia a datos
+        self.crearTorresDesdeMatriz(matriz, datosTorres)
+    
+    def crearTorresDesdeMatriz(self, matriz, datosTorres):
+        """Convierte la matriz de pantallaJuego en objetos Torre"""
+        for fila in range(len(matriz)):
+            for columna in range(len(matriz[0])):
+                idTorre = matriz[fila][columna]
+                
+                if idTorre:  # Si hay una torre
+                    datos = datosTorres[idTorre]
+                    torre = Torre(idTorre, fila, columna, datos, self.gridConfig)
+                    self.torres.append(torre)
+        
+        print(f"🏰 {len(self.torres)} torres creadas")
+    
+    def agregarTorre(self, idTorre, fila, columna):
+        """
+        Agrega una nueva torre durante la partida
+        
+        Args:
+            idTorre: str - "T1", "T2", "T3", "T4"
+            fila: int - fila en la matriz
+            columna: int - columna en la matriz
+        
+        Returns:
+            Torre: objeto torre creado, o None si falla
+        """
+        try:
+            datos = self.datosTorres[idTorre]
+            torre = Torre(idTorre, fila, columna, datos, self.gridConfig)
+            self.torres.append(torre)
+            print(f"🏰 Torre {idTorre} agregada en ({fila}, {columna}) durante partida")
+            return torre
+        except Exception as e:
+            print(f"❌ Error agregando torre: {e}")
+            return None
+    
+    def eliminarTorre(self, fila, columna):
+        
+        """Elimina una torre en una posición específica"""
+        
+        for torre in self.torres[:]:
+            if torre.fila == fila and torre.columna == columna:
+                self.torres.remove(torre)
+                print(f"🗑️ Torre {torre.tipo} eliminada de ({fila}, {columna})")
+                return True
+        return False
+    
+    def actualizar(self, avatars, fps):
+        
+        """Actualiza todas las torres (las hace atacar)"""
+        
+        for torre in self.torres:
+            if torre.viva:
+                torre.actualizar(avatars, fps)
+        
+        # Eliminar torres destruidas
+        self.torres = [t for t in self.torres if t.viva]
+    
+    def dibujar(self, pantalla):
+        """Dibuja todas las torres"""
+        for torre in self.torres:
+            torre.dibujar(pantalla)
+    
+    def verificarTodasDestruidas(self):
+        """Verifica si todas las torres fueron destruidas"""
         return len(self.torres) == 0
