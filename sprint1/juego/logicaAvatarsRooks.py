@@ -104,7 +104,7 @@ class Avatar:
         self.calcularPosicion(gridConfig)
         
         # velocidad fija
-        self.velocidad = 1.0  # Píxeles por frame (ajustar si es muy lento/rápido)
+        self.velocidad = 0.5  # Píxeles por frame (ajustar si es muy lento/rápido)
         
         # Lista de proyectiles disparados por este avatar
         self.proyectiles = []
