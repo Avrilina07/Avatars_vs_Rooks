@@ -15,12 +15,12 @@ sys.path.insert(0, carpeta_personalizacion)
 from constantes import FPS
 from componentes import Boton
 from clasesAvatarsRooks import Avatars, Rooks
-
+from logicaAvatarsRooks import GestorAvatars, GestorTorres
 
 class PantallaJuego:
     """Pantalla de colocación de torres en el tablero 9x5"""
     
-    def __init__(self, pantalla, colorFondo, temaActual):
+    def __init__(self, pantalla, colorFondo, temaActual, dificultad):
         """
         Inicializa la pantalla de juego
         
@@ -28,6 +28,7 @@ class PantallaJuego:
             pantalla: Surface de pygame (pantalla completa)
             colorFondo: Objeto ColorFondo con configuración de colores
             temaActual: Objeto Tema con opacidad
+            dificultad: str - "Facil", "Intermedio", "Dificil"
         """
         self.pantalla = pantalla
         self.reloj = pygame.time.Clock()
@@ -38,13 +39,15 @@ class PantallaJuego:
         self.colorFondo = colorFondo
         self.temaActual = temaActual
         
+        # Dificultad seleccionada
+        self.dificultad = dificultad
+        
         # Dimensiones de pantalla
         self.ancho, self.alto = self.pantalla.get_size()
         
         # === CONFIGURACIÓN DEL TABLERO ===
-        # IMPORTANTE: Ahora es 5 filas × 9 columnas (vertical)
-        self.filas = 9      # ← Ahora 9 filas (vertical)
-        self.columnas = 5   # ← Ahora 5 columnas (horizontal)
+        self.filas = 9      
+        self.columnas = 5   
         
         # Tamaño y posición del tablero 
         self.anchoTablero = 750  
@@ -55,37 +58,34 @@ class PantallaJuego:
         self.tableroY = 0
         
         # Tamaño de cada casilla
-        self.anchoCasilla = self.anchoTablero / self.columnas  # ~105px
-        self.altoCasilla = self.altoTablero / self.filas  # ~110px
+        self.anchoCasilla = self.anchoTablero / self.columnas
+        self.altoCasilla = self.altoTablero / self.filas
         
-        # === AJUSTES MANUALES DEL GRID (para alinear con la imagen) ===
-        # Estos valores te permiten mover el grid independientemente
-        self.gridOffsetX = 130      # ← Mueve el grid a la derecha (+) o izquierda (-)
-        self.gridOffsetY = 200      # ← Mueve el grid abajo (+) o arriba (-)
-        self.gridAnchoExtra = -50   # ← Ajusta el ancho de las casillas (+/-)
-        self.gridAltoExtra = -25    # ← Ajusta el alto de las casillas (+/-)
+        # === AJUSTES MANUALES DEL GRID ===
+        self.gridOffsetX = 130
+        self.gridOffsetY = 200
+        self.gridAnchoExtra = -50
+        self.gridAltoExtra = -25
         
         # Cargar imagen del tablero
         self.imagenTablero = self.cargarImagenTablero()
         
         # === MATRIZ DEL JUEGO ===
-        # None = casilla vacía
-        # "T1", "T2", "T3", "T4" = torre colocada
         self.matriz = [[None for _ in range(self.columnas)] for _ in range(self.filas)]
         
         # Torre actualmente seleccionada
         self.torreSeleccionada = None
         
         # === FUENTES ===
-        self.fuenteTitulo = pygame.font.SysFont('Arial', 65, bold=True)
-        self.fuenteTorre = pygame.font.SysFont('Arial', 32, bold=True)
+        self.fuenteTitulo = pygame.font.SysFont('Arial', 65)
+        self.fuenteTorre = pygame.font.SysFont('Arial', 32)
+        self.fuenteInfo = pygame.font.SysFont('Arial', 28)
         
-        # === INSTANCIAR CLASES DE JUEGO === (MOVER ANTES DE CREAR BOTONES)
+        # === INSTANCIAR CLASES DE JUEGO === 
         self.rooks = Rooks()
         self.avatars = Avatars()
         
-        # === MAPEO DE TORRES === (MOVER ANTES DE CREAR BOTONES)
-        # Relacionar botones con datos de torres
+        # === MAPEO DE TORRES === 
         self.datosTorres = {
             "T1": self.rooks.torreArena,
             "T2": self.rooks.torreRoca,
@@ -94,341 +94,375 @@ class PantallaJuego:
         }
         
         # === DINERO INICIAL ===
-        self.dinero = 500  # Cambiar de 000 a 500 para tener dinero inicial
+        self.dinero = 500  
         
-        # === BOTONES DE TORRES === (AHORA DESPUÉS DE datosTorres)
+        # === BOTONES DE TORRES === 
         self.botonesTorres = self.crearBotonesTorres()
         
         # === BOTÓN INICIAR JUEGO ===
         self.botonIniciar = self.crearBotonIniciar()
+        
+        # === GESTORES DE JUEGO ===
+        self.gestorAvatars = None
+        self.gestorTorres = None
+        self.juegoIniciado = False
     
     def cargarImagenTablero(self):
         """Carga y escala la imagen del tablero"""
         try:
-            rutaImagen = os.path.join(os.path.dirname(__file__), 'imagenes', 'Tablero.png')
+            rutaImagen = os.path.join(carpeta_actual, 'imagenes', 'Tablero.png')
             imagen = pygame.image.load(rutaImagen)
             imagen = pygame.transform.scale(imagen, (self.anchoTablero, self.altoTablero))
             return imagen
         except Exception as e:
-            print(f"❌ Error al cargar Tablero.png: {e}")
+            print(f"⚠️ Error cargando imagen del tablero: {e}")
             return None
     
     def crearBotonesTorres(self):
+        """Crea los botones de las 4 torres"""
         botones = []
-        nombresTorres = ["Arena", "Roca", "Fuego", "Agua"]
-
-        baseX = 850
-        baseY = 250
-        espacioX = 240
-        espacioY = 120
-
-        for i in range(4):
-            columna = i % 2
-            fila = i // 2
+        startX = 850
+        startY = 100
+        spacing = 120
+        
+        infoBotones = [
+            ("T1", "Arena", self.rooks.torreArena["valor"]),
+            ("T2", "Roca", self.rooks.torreRoca["valor"]),
+            ("T3", "Fuego", self.rooks.torreFuego["valor"]),
+            ("T4", "Agua", self.rooks.torreAgua["valor"])
+        ]
+        
+        for i, (id, nombre, valor) in enumerate(infoBotones):
+            texto = f"{nombre}\n₡{valor}"
+            # Usar solo los parámetros que acepta el constructor actual
+            boton = Boton(startX, startY + (i * spacing), 250, 100, texto)
             
-            # Obtener datos de la torre
-            idTorre = f"T{i+1}"
-            torre = self.datosTorres[idTorre]
+            # Configurar colores después de crear el botón
+            try:
+                boton.colorNormal = self.colorFondo.obtenerColorBoton()
+                boton.colorTexto = self.colorFondo.obtenerColorTextoBoton()
+            except:
+                pass  # Mantener colores por defecto si hay error
             
-            # Texto del botón con nombre y costo
-            textoBoton = f"{nombresTorres[i]}\n₡{torre['valor']}"
-            
-            boton = Boton(
-                baseX + columna * espacioX,
-                baseY + fila * espacioY,
-                220,
-                90,
-                textoBoton,
-                24  # Fuente más pequeña para 2 líneas
-            )
-
-            boton.colorNormal = self.colorFondo.obtenerColorBoton()
-            boton.colorHover = self.colorFondo.obtenerColorHoverBoton()
-            boton.colorBorde = self.colorFondo.obtenerColorBorde()
-            boton.colorTexto = self.colorFondo.obtenerColorTextoBoton()
-
-            boton.idTorre = idTorre
+            boton.id_torre = id
             botones.append(boton)
-
+        
         return botones
     
     def crearBotonIniciar(self):
+        """Crea el botón de iniciar juego"""
+        # Usar solo los parámetros que acepta el constructor actual
         boton = Boton(
-            925,
-            480,
-            300,
+            850, 
+            600,
+            250, 
             80,
-            "INICIAR JUEGO",
-            32
+            "INICIAR"
         )
-
-        boton.colorNormal = self.colorFondo.obtenerColorBoton()
-        boton.colorHover = self.colorFondo.obtenerColorHoverBoton()
-        boton.colorBorde = self.colorFondo.obtenerColorBorde()
-        boton.colorTexto = self.colorFondo.obtenerColorTextoBoton()
-
+        
+        # Configurar colores después de crear el botón
+        try:
+            boton.colorNormal = (0, 200, 0)  # Verde
+            boton.colorTexto = (255, 255, 255)  # Blanco
+        except:
+            pass  # Mantener colores por defecto si hay error
+        
         return boton
-
-
     
     def obtenerCasillaClick(self, mouseX, mouseY):
-        """
-        Convierte coordenadas del mouse a posición en la matriz
-        AHORA USANDO LOS MISMOS OFFSETS QUE EL GRID VISUAL
-        
-        Args:
-            mouseX: Coordenada X del click
-            mouseY: Coordenada Y del click
-            
-        Returns:
-            (fila, columna) o None si está fuera del tablero
-        """
-        # Usar las mismas coordenadas que el grid visual
+        """Convierte coordenadas de mouse a fila/columna"""
         gridX = self.tableroX + self.gridOffsetX
         gridY = self.tableroY + self.gridOffsetY
+        anchoCasilla = self.anchoCasilla + self.gridAnchoExtra
+        altoCasilla = self.altoCasilla + self.gridAltoExtra
         
-        # Usar el mismo tamaño de casillas que el grid visual
-        anchoCasillaGrid = self.anchoCasilla + self.gridAnchoExtra
-        altoCasillaGrid = self.altoCasilla + self.gridAltoExtra
-        
-        # Calcular límites del grid ajustado
-        gridAncho = self.columnas * anchoCasillaGrid
-        gridAlto = self.filas * altoCasillaGrid
-        
-        # Verificar si está dentro del grid ajustado
-        if not (gridX <= mouseX <= gridX + gridAncho and
-                gridY <= mouseY <= gridY + gridAlto):
+        if mouseX < gridX or mouseX > gridX + (anchoCasilla * self.columnas):
+            return None
+        if mouseY < gridY or mouseY > gridY + (altoCasilla * self.filas):
             return None
         
-        # Calcular posición en la matriz usando el grid ajustado
-        columna = int((mouseX - gridX) / anchoCasillaGrid)
-        fila = int((mouseY - gridY) / altoCasillaGrid)
+        columna = int((mouseX - gridX) / anchoCasilla)
+        fila = int((mouseY - gridY) / altoCasilla)
         
-        # Validar que esté dentro del rango
         if 0 <= fila < self.filas and 0 <= columna < self.columnas:
             return (fila, columna)
         
         return None
     
     def colocarTorre(self, fila, columna):
-        """Coloca la torre seleccionada si hay suficiente dinero"""
-        if self.torreSeleccionada and self.matriz[fila][columna] is None:
-            torre = self.datosTorres[self.torreSeleccionada]
-            costo = torre['valor']
+        """Coloca una torre en la casilla si es posible"""
+
+        if self.matriz[fila][columna] is not None:
+            print("⚠️ Ya hay una torre ahí")
+            return
+        
+        if self.torreSeleccionada is None:
+            print("⚠️ Selecciona una torre primero")
+            return
+        
+        costo = self.datosTorres[self.torreSeleccionada]["valor"]
+        
+        if self.dinero >= costo:
+            self.matriz[fila][columna] = self.torreSeleccionada
+            self.dinero -= costo
+            print(f"✅ Torre {self.torreSeleccionada} colocada en ({fila}, {columna})")
             
-            # Verificar si hay dinero suficiente
-            if self.dinero >= costo:
-                self.matriz[fila][columna] = self.torreSeleccionada
-                self.dinero -= costo  # Descontar el costo
-                print(f"✅ {self.torreSeleccionada} colocada en ({fila}, {columna})")
-                print(f"💰 Dinero restante: ${self.dinero}")
-            else:
-                print(f"❌ Dinero insuficiente. Necesitas ${costo}, tienes ${self.dinero}")
+            # ✅ Si el juego ya inició, agregar torre inmediatamente al gestor
+            if self.juegoIniciado and self.gestorTorres:
+                self.gestorTorres.agregarTorre(self.torreSeleccionada, fila, columna)
+        else:
+            print(f"⚠️ Dinero insuficiente (necesitas ${costo})")
     
     def quitarTorre(self, fila, columna):
-        """Quita la torre y devuelve el dinero"""
+        """Quita una torre y devuelve el dinero"""
+        
         if self.matriz[fila][columna] is not None:
-            torreQuitada = self.matriz[fila][columna]
-            torre = self.datosTorres[torreQuitada]
-            
-            # Devolver el dinero
-            self.dinero += torre['valor']
+            idTorre = self.matriz[fila][columna]
+            valorDevolver = self.datosTorres[idTorre]["valor"]
+            self.dinero += valorDevolver
             self.matriz[fila][columna] = None
+            print(f"🔄 Torre {idTorre} removida, +${valorDevolver}")
             
-            print(f"🗑️ {torreQuitada} removida de ({fila}, {columna})")
-            print(f"💰 Dinero devuelto: ${torre['valor']} | Total: ${self.dinero}")
+            # ✅ Si el juego ya inició, eliminar del gestor también
+            if self.juegoIniciado and self.gestorTorres:
+                self.gestorTorres.eliminarTorre(fila, columna)
     
     def manejarEventos(self):
-        """Procesa todos los eventos de entrada"""
+        """Maneja eventos de pygame"""
         for evento in pygame.event.get():
-            # Cerrar ventana
             if evento.type == pygame.QUIT:
                 self.ejecutando = False
-                self.volver = False
+                pygame.quit()
+                sys.exit()
             
-            # Tecla ESC para salir (temporal para testing)
-            elif evento.type == pygame.KEYDOWN:
+            if evento.type == pygame.KEYDOWN:
                 if evento.key == pygame.K_ESCAPE:
                     self.ejecutando = False
                     self.volver = True
             
-            # Click del mouse
-            elif evento.type == pygame.MOUSEBUTTONDOWN:
-                mouseX, mouseY = evento.pos
-                
-                # Verificar click en botones de torres
-                for boton in self.botonesTorres:
-                    if boton.manejarEvento(evento):
-                        self.torreSeleccionada = boton.idTorre
-                        print(f"🎯 Torre seleccionada: {self.torreSeleccionada}")
-                
-                # Verificar click en botón Iniciar Juego
+            # Clicks en botones de torres (✅ AHORA FUNCIONAN DURANTE PARTIDA)
+            for boton in self.botonesTorres:
+                if boton.manejarEvento(evento):
+                    self.torreSeleccionada = boton.id_torre
+                    print(f"🎯 Torre seleccionada: {self.torreSeleccionada}")
+            
+            # Click en botón Iniciar (✅ SOLO VISIBLE ANTES DE INICIAR)
+            if not self.juegoIniciado:
                 if self.botonIniciar.manejarEvento(evento):
-                    print("🎮 INICIAR JUEGO clickeado (sin funcionalidad aún)")
-                    # Aquí irá la lógica para iniciar el juego
-                
-                # Verificar click en el tablero
+                    self.iniciarJuego()
+            
+            # Clicks en el tablero
+            if evento.type == pygame.MOUSEBUTTONDOWN:
+                mouseX, mouseY = pygame.mouse.get_pos()
                 casilla = self.obtenerCasillaClick(mouseX, mouseY)
+                
                 if casilla:
                     fila, columna = casilla
                     
-                    # Si la casilla está vacía y hay torre seleccionada → colocar
-                    if self.matriz[fila][columna] is None and self.torreSeleccionada:
+                    if evento.button == 1:  # Click izquierdo
                         self.colocarTorre(fila, columna)
-                    
-                    # Si la casilla tiene una torre → quitar
-                    elif self.matriz[fila][columna] is not None:
+                    elif evento.button == 3:  # Click derecho
                         self.quitarTorre(fila, columna)
-            
-            # Hover de botones
-            elif evento.type == pygame.MOUSEMOTION:
-                for boton in self.botonesTorres:
-                    boton.manejarEvento(evento)
-                self.botonIniciar.manejarEvento(evento)  # Hover para Iniciar Juego
+    
+    def iniciarJuego(self):
+        """Inicia el juego (crea gestores y comienza spawneo)"""
+        # Crear configuración del grid
+        gridConfig = {
+            "gridX": self.tableroX + self.gridOffsetX,
+            "gridY": self.tableroY + self.gridOffsetY,
+            "anchoCasilla": self.anchoCasilla + self.gridAnchoExtra,
+            "altoCasilla": self.altoCasilla + self.gridAltoExtra
+        }
+        
+        # Crear gestor de torres desde la matriz
+        self.gestorTorres = GestorTorres(self.matriz, self.datosTorres, gridConfig)
+        
+        # Crear gestor de avatars con dificultad
+        self.gestorAvatars = GestorAvatars(gridConfig, self.dificultad, FPS)
+        self.gestorAvatars.iniciar()
+        
+        self.juegoIniciado = True
+        print(f"🎮 ¡Juego iniciado en dificultad {self.dificultad}!")
+    
+    def actualizarJuego(self):
+        """Actualiza la lógica del juego cada frame"""
+        if not self.juegoIniciado:
+            return
+        
+        # Actualizar avatars (movimiento, spawn, disparos)
+        self.gestorAvatars.actualizar(self.gestorTorres.torres)
+        
+        # Actualizar torres (ataques a avatars)
+        self.gestorTorres.actualizar(self.gestorAvatars.avatarsActivos, FPS)
+        
+        # Verificar fin del juego
+        stats = self.gestorAvatars.obtenerEstadisticas()
+        
+        if stats["perdio"]:
+            print(f"💀 ¡PERDISTE! {stats['resultado']}")
+            # Se puede mostrar pantalla de derrota
+        
+        if stats["gano"]:
+            print(f"🎉 ¡GANASTE! {stats['resultado']}")
+            # Se puede mostrar pantalla de victoria
     
     def dibujar(self):
         """Dibuja todos los elementos en pantalla"""
-        # 1. Fondo con color personalizado
+        # 1. Fondo 
         self.pantalla.fill(self.colorFondo.rgb)
         
-        # 2. Overlay de tema (opacidad)
-        overlay = pygame.Surface((self.ancho, self.alto))
-        overlay.set_alpha(self.temaActual.opacidad)
-        overlay.fill((0, 0, 0))
-        self.pantalla.blit(overlay, (0, 0))
-        
-        # 3. Título
-        colorTexto = self.colorFondo.obtenerColorTitulo()
-        titulo = self.fuenteTitulo.render("Avatars VS Rooks", True, colorTexto)
-        tituloRect = titulo.get_rect(center=(self.ancho -350, 100))
-        self.pantalla.blit(titulo, tituloRect)
-        
-        # 4. Imagen del tablero
+        # 2. Imagen del tablero
         if self.imagenTablero:
             self.pantalla.blit(self.imagenTablero, (self.tableroX, self.tableroY))
         
-        # 5. GRID ROJO PARA DEBUG (para ajustar la matriz)
+        # 3. Grid de debug (opcional)
         self.dibujarGridDebug()
         
-        # 6. Torres colocadas en el tablero
-        self.dibujarTorres()
+        # 4. Torres colocadas (si no ha iniciado el juego)
+        if not self.juegoIniciado:
+            self.dibujarTorresMatriz()
         
-        # 7. Botones de selección de torres
+        # 5. Torres activas (si ya inició)
+        if self.juegoIniciado and self.gestorTorres:
+            self.gestorTorres.dibujar(self.pantalla)
+        
+        # 6. Avatars
+        if self.juegoIniciado and self.gestorAvatars:
+            self.gestorAvatars.dibujar(self.pantalla)
+        
+        # 7. Título
+        self.dibujarTitulo()
+        
+        # 8. Botones de torres (✅ SIEMPRE VISIBLES)
         for boton in self.botonesTorres:
             boton.dibujar(self.pantalla)
-            
-            # Indicador visual de torre seleccionada (borde dorado)
-            if boton.idTorre == self.torreSeleccionada:
-                pygame.draw.rect(self.pantalla, (255, 215, 0), boton.rect, 5)
         
-        # 8. Botón Iniciar Juego
-        self.botonIniciar.dibujar(self.pantalla)
-
-        #9 Dinero
+        # 9. Botón iniciar (✅ SOLO ANTES DE INICIAR)
+        if not self.juegoIniciado:
+            self.botonIniciar.dibujar(self.pantalla)
+        
+        # 10. Dinero (✅ SIEMPRE VISIBLE)
         self.dibujarDinero()
-
+        
+        # 11. Estadísticas del juego
+        if self.juegoIniciado:
+            self.dibujarEstadisticas()
+        
+        # 12. Indicador de torre seleccionada
+        if self.torreSeleccionada:
+            self.dibujarTorreSeleccionada()
         
         # Actualizar pantalla
         pygame.display.flip()
+    
+    def dibujarTitulo(self):
+        """Dibuja el título del juego"""
+        texto = "AVATARS VS ROOKS"
+        color = self.colorFondo.obtenerColorTitulo()
+        render = self.fuenteTitulo.render(texto, True, color)
+        rect = render.get_rect(center=(self.ancho // 2, 50))
+        self.pantalla.blit(render, rect)
+    
     def dibujarDinero(self):
-        """Muestra el dinero actual del jugador debajo del botón Iniciar Juego"""
+        """Dibuja el dinero disponible"""
         texto = f"Dinero: ${self.dinero}"
         color = self.colorFondo.obtenerColorTitulo()
-        fuenteDinero = pygame.font.SysFont('Arial', 36, bold=True)
-        render = fuenteDinero.render(texto, True, color)
-
-        # Colocar debajo del botón iniciar
-        x = self.botonIniciar.rect.centerx
-        y = self.botonIniciar.rect.bottom + 40  # espacio debajo del botón
-        rect = render.get_rect(center=(x, y))
-        self.pantalla.blit(render, rect)
-
-    def dibujarGridDebug(self):
-        """
-        Dibuja un grid rojo para debug - para ver dónde caen las casillas
-        
-        AJUSTA ESTOS VALORES MANUALMENTE EN __init__:
-        - gridOffsetX: mueve el grid horizontalmente (+derecha, -izquierda)
-        - gridOffsetY: mueve el grid verticalmente (+abajo, -arriba)
-        - gridAnchoExtra: ajusta ancho de casillas (+más ancho, -más estrecho)
-        - gridAltoExtra: ajusta alto de casillas (+más alto, -más bajo)
-        
-        Ejemplo:
-        self.gridOffsetX = 50    # Mueve grid 50px a la derecha
-        self.gridOffsetY = -20   # Mueve grid 20px arriba
-        self.gridAnchoExtra = 5  # Casillas 5px más anchas
-        """
-        colorGrid = (255, 0, 0)  # Rojo brillante
-        grosor = 3  # Más grueso para ver mejor
-        
-        # Calcular posición del grid con offsets
-        gridX = self.tableroX + self.gridOffsetX
-        gridY = self.tableroY + self.gridOffsetY
-        
-        # Calcular tamaño de casillas con ajustes
-        anchoCasillaGrid = self.anchoCasilla + self.gridAnchoExtra
-        altoCasillaGrid = self.altoCasilla + self.gridAltoExtra
-        
-        # Líneas verticales (columnas)
-        for col in range(self.columnas + 1):
-            x = int(gridX + (col * anchoCasillaGrid))
-            pygame.draw.line(
-                self.pantalla,
-                colorGrid,
-                (x, gridY),
-                (x, int(gridY + (self.filas * altoCasillaGrid))),
-                grosor
-            )
-        
-        # Líneas horizontales (filas)
-        for fila in range(self.filas + 1):
-            y = int(gridY + (fila * altoCasillaGrid))
-            pygame.draw.line(
-                self.pantalla,
-                colorGrid,
-                (gridX, y),
-                (int(gridX + (self.columnas * anchoCasillaGrid)), y),
-                grosor
-            )
+        render = self.fuenteInfo.render(texto, True, color)
+        # ✅ Ajustar posición Y según si hay botón Iniciar
+        y = 550 if not self.juegoIniciado else 700
+        self.pantalla.blit(render, (850, y))
     
-    def dibujarTorres(self):
-        """Dibuja las torres colocadas en el tablero - ALINEADAS CON EL GRID AJUSTADO"""
-        # Usar las mismas coordenadas que el grid visual
+    def dibujarTorreSeleccionada(self):
+        """Dibuja indicador de torre seleccionada"""
+        texto = f"Seleccionada: {self.torreSeleccionada}"
+        color = (255, 255, 0)
+        render = self.fuenteInfo.render(texto, True, color)
+        self.pantalla.blit(render, (850, 50))
+    
+    def dibujarEstadisticas(self):
+        """Dibuja información del juego en curso"""
+        if not self.juegoIniciado:
+            return
+        
+        stats = self.gestorAvatars.obtenerEstadisticas()
+        
+        color = self.colorFondo.obtenerColorTitulo()
+        y = 50
+        
+        # Dificultad
+        textoDif = f"Dificultad: {stats['dificultad']}"
+        renderDif = self.fuenteInfo.render(textoDif, True, color)
+        self.pantalla.blit(renderDif, (850, y))
+        y += 40
+        
+        # Tiempo restante
+        textoTiempo = f"Tiempo: {stats['tiempoRestanteStr']}"
+        colorTiempo = (255, 0, 0) if stats['tiempoRestante'] < 10 else color
+        renderTiempo = self.fuenteInfo.render(textoTiempo, True, colorTiempo)
+        self.pantalla.blit(renderTiempo, (850, y))
+        y += 40
+        
+        # Enemigos vivos
+        textoEnemigos = f"Enemigos: {stats['avatarsVivos']}"
+        renderEnemigos = self.fuenteInfo.render(textoEnemigos, True, color)
+        self.pantalla.blit(renderEnemigos, (850, y))
+        y += 40
+        
+        # Torres restantes
+        textoTorres = f"Torres: {len(self.gestorTorres.torres)}"
+        renderTorres = self.fuenteInfo.render(textoTorres, True, color)
+        self.pantalla.blit(renderTorres, (850, y))
+    
+    def dibujarGridDebug(self):
+        """Dibuja el grid de debug (para ajustar posiciones)"""
         gridX = self.tableroX + self.gridOffsetX
         gridY = self.tableroY + self.gridOffsetY
+        anchoCasilla = self.anchoCasilla + self.gridAnchoExtra
+        altoCasilla = self.altoCasilla + self.gridAltoExtra
         
-        # Usar el mismo tamaño de casillas que el grid visual
-        anchoCasillaGrid = self.anchoCasilla + self.gridAnchoExtra
-        altoCasillaGrid = self.altoCasilla + self.gridAltoExtra
+        for fila in range(self.filas + 1):
+            y = gridY + fila * altoCasilla
+            pygame.draw.line(self.pantalla, (255, 0, 0), 
+                           (gridX, y), 
+                           (gridX + anchoCasilla * self.columnas, y), 2)
+        
+        for columna in range(self.columnas + 1):
+            x = gridX + columna * anchoCasilla
+            pygame.draw.line(self.pantalla, (255, 0, 0), 
+                           (x, gridY), 
+                           (x, gridY + altoCasilla * self.filas), 2)
+    
+    def dibujarTorresMatriz(self):
+        """Dibuja las torres colocadas (antes de iniciar)"""
+        gridX = self.tableroX + self.gridOffsetX
+        gridY = self.tableroY + self.gridOffsetY
+        anchoCasilla = self.anchoCasilla + self.gridAnchoExtra
+        altoCasilla = self.altoCasilla + self.gridAltoExtra
+        
+        colores = {
+            "T1": (194, 178, 128),
+            "T2": (128, 128, 128),
+            "T3": (255, 100, 0),
+            "T4": (0, 100, 255)
+        }
         
         for fila in range(self.filas):
             for columna in range(self.columnas):
-                torre = self.matriz[fila][columna]
-                
-                if torre:  # Si hay una torre en esta casilla
-                    # Calcular centro de la casilla USANDO EL GRID AJUSTADO
-                    centroX = int(gridX + (columna * anchoCasillaGrid) + (anchoCasillaGrid / 2))
-                    centroY = int(gridY + (fila * altoCasillaGrid) + (altoCasillaGrid / 2))
+                if self.matriz[fila][columna]:
+                    idTorre = self.matriz[fila][columna]
+                    color = colores.get(idTorre, (255, 255, 255))
                     
-                    # Círculo de fondo (ajustado al tamaño de la casilla)
-                    radio = min(int(anchoCasillaGrid * 0.35), int(altoCasillaGrid * 0.35))
-                    pygame.draw.circle(self.pantalla, (50, 50, 50), (centroX, centroY), radio)
-                    pygame.draw.circle(self.pantalla, (255, 255, 255), (centroX, centroY), radio, 3)
+                    x = gridX + columna * anchoCasilla + anchoCasilla / 2
+                    y = gridY + fila * altoCasilla + altoCasilla / 2
                     
-                    # Texto de la torre
-                    textoTorre = self.fuenteTorre.render(torre, True, (255, 255, 255))
-                    textoRect = textoTorre.get_rect(center=(centroX, centroY))
-                    self.pantalla.blit(textoTorre, textoRect)
+                    pygame.draw.circle(self.pantalla, color, (int(x), int(y)), 25)
+                    pygame.draw.circle(self.pantalla, (0, 0, 0), (int(x), int(y)), 25, 3)
     
     def ejecutar(self):
-        """
-        Loop principal de la pantalla
-        
-        Returns:
-            bool: True si debe volver a pantalla anterior
-        """
+        """Loop principal de la pantalla"""
         while self.ejecutando:
             self.manejarEventos()
+            self.actualizarJuego()
             self.dibujar()
             self.reloj.tick(FPS)
         
@@ -436,7 +470,7 @@ class PantallaJuego:
 
 
 # ============================================================================
-# Para testing directo (opcional)
+# Para testing directo
 # ============================================================================
 if __name__ == "__main__":
     print("⚠️ Este archivo debe ser importado desde otra pantalla")
