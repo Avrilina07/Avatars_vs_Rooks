@@ -21,9 +21,9 @@ sys.path.insert(0, carpeta_juego)
 try:
     from pantallaDificultad import PantallaDificultad
     from pantallaJuego import PantallaJuego
-    print("✅ Módulos del juego importados correctamente")
+    print(" Módulos del juego importados correctamente")
 except ImportError as e:
-    print(f"❌ Error al importar módulos del juego: {e}")
+    print(f"Error al importar módulos del juego: {e}")
     print(f"Asegúrate de que pantallaDificultad.py está en: {carpeta_juego}")
     sys.exit(1)
 
