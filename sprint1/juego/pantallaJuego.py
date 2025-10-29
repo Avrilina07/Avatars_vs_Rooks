@@ -50,8 +50,8 @@ class PantallaJuego:
         self.anchoCasilla = self.anchoTablero / self.columnas
         self.altoCasilla = self.altoTablero / self.filas
         
-        self.gridOffsetX = 123
-        self.gridOffsetY = 192
+        self.gridOffsetX = 130
+        self.gridOffsetY = 200
         self.gridAnchoExtra = -50
         self.gridAltoExtra = -25
         
