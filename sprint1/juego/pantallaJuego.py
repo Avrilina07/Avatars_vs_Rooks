@@ -108,7 +108,7 @@ class PantallaJuego:
     def cargarImagenTablero(self):
         """Carga y escala la imagen del tablero"""
         try:
-            rutaImagen = os.path.join(os.path.dirname(__file__), 'imagenes', 'Tablero.png')
+            rutaImagen = os.path.join(carpeta_actual, 'imagenes', 'Tablero.png')
             imagen = pygame.image.load(rutaImagen)
             imagen = pygame.transform.scale(imagen, (self.anchoTablero, self.altoTablero))
             return imagen
@@ -241,9 +241,7 @@ class PantallaJuego:
             self.ejecutando = False
             
     def obtenerCasillaClick(self, mouseX, mouseY):
-        """
-        Convierte coordenadas del mouse a posición en la matriz
-        """
+        """Convierte coordenadas de mouse a fila/columna"""
         gridX = self.tableroX + self.gridOffsetX
         gridY = self.tableroY + self.gridOffsetY
         anchoCasillaGrid = self.anchoCasilla + self.gridAnchoExtra
@@ -289,7 +287,9 @@ class PantallaJuego:
     def quitarTorre(self, fila, columna):
         """Quita una torre y devuelve el dinero"""
         if self.matriz[fila][columna] is not None:
-            torreQuitada = self.matriz[fila][columna]
+            idTorre = self.matriz[fila][columna]
+            valorDevolver = self.datosTorres[idTorre]["valor"]
+            self.dinero += valorDevolver
             self.matriz[fila][columna] = None
             print(f"Torre {idTorre} removida, +${valorDevolver}")
             
@@ -300,7 +300,6 @@ class PantallaJuego:
     def manejarEventos(self):
         """Procesa todos los eventos de entrada"""
         for evento in pygame.event.get():
-            # Cerrar ventana
             if evento.type == pygame.QUIT:
                 self.ejecutando = False
                 self.volver = False
@@ -465,11 +464,12 @@ class PantallaJuego:
         
         for fila in range(self.filas):
             for columna in range(self.columnas):
-                torre = self.matriz[fila][columna]
-                
-                if torre:  
-                    centroX = int(gridX + (columna * anchoCasillaGrid) + (anchoCasillaGrid / 2))
-                    centroY = int(gridY + (fila * altoCasillaGrid) + (altoCasillaGrid / 2))
+                if self.matriz[fila][columna]:
+                    idTorre = self.matriz[fila][columna]
+                    color = colores.get(idTorre, (255, 255, 255))
+                    
+                    x = gridX + columna * anchoCasilla + anchoCasilla / 2
+                    y = gridY + fila * altoCasilla + altoCasilla / 2
                     
                     pygame.draw.circle(self.pantalla, color, (int(x), int(y)), 25)
                     pygame.draw.circle(self.pantalla, (0, 0, 0), (int(x), int(y)), 25, 3)
@@ -559,6 +559,7 @@ class PantallaJuego:
         """
         while self.ejecutando:
             self.manejarEventos()
+            self.actualizarJuego()
             self.dibujar()
             self.reloj.tick(FPS)
         
