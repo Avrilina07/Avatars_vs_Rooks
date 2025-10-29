@@ -1,5 +1,3 @@
-# test.py
-
 import pygame
 import sys
 import os
@@ -30,7 +28,7 @@ pygame.display.set_caption("Avatars VS Rooks - Test")
 colorFondo = ColoresFondoDisponibles.ROJO_MUY_OSCURO_3
 tema = ConfiguracionTemas.CLARO
 
-# ⚙️ AJUSTAR: Cambiar dificultad para probar
+# Cambiar dificultad para probar
 dificultad = "Facil"  # "Facil", "Intermedio", "Dificil"
 
 # Crear instancia del juego con dificultad
