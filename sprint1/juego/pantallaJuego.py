@@ -260,8 +260,9 @@ class PantallaJuego:
     
     def colocarTorre(self, fila, columna):
         """Coloca una torre en la casilla si es posible"""
+        # Verificar estado actualizado de la matriz
         if self.matriz[fila][columna] is not None:
-            print("Ya hay una torre ahi")
+            print(f"Ya hay una torre ({self.matriz[fila][columna]}) en ({fila}, {columna})")
             return
         
         if self.torreSeleccionada is None:
@@ -278,7 +279,7 @@ class PantallaJuego:
             if self.juegoIniciado and self.gestorTorres:
                 self.gestorTorres.agregarTorre(self.torreSeleccionada, fila, columna)
         else:
-            print(f"Dinero insuficiente (necesitas ${costo})")
+            print(f"Dinero insuficiente (tienes ${self.dinero}, necesitas ${costo})")
     
     def quitarTorre(self, fila, columna):
         """Quita una torre y devuelve el dinero"""
