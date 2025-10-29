@@ -1,6 +1,8 @@
 # pantallas.py
 
 import pygame
+import sys
+import os
 from constantes import ANCHO_VENTANA, ALTO_VENTANA, FPS, PANTALLA_COMPLETA
 from componentes import Boton, DropdownTema, Slider
 from temas import ConfiguracionTemas
@@ -8,6 +10,22 @@ from fondo import ColoresFondoDisponibles
 from spotify_api import SpotifyAPI
 from pantalla_musica import PantallaMusica
 from pantalla_interfaz import PantallaPersonalizacionInterfaz
+
+carpeta_actual = os.path.dirname(os.path.abspath(__file__))  # personalizacion
+carpeta_sprint1 = os.path.dirname(carpeta_actual)  # sprint1
+carpeta_avatars = os.path.dirname(carpeta_sprint1)  # Avatars_vs_Rooks
+carpeta_juego = os.path.join(carpeta_avatars, 'sprint1', 'juego')
+sys.path.insert(0, carpeta_juego)
+
+
+try:
+    from pantallaDificultad import PantallaDificultad
+    from pantallaJuego import PantallaJuego
+    print(" Módulos del juego importados correctamente")
+except ImportError as e:
+    print(f"Error al importar módulos del juego: {e}")
+    print(f"Asegúrate de que pantallaDificultad.py está en: {carpeta_juego}")
+    sys.exit(1)
 
 
 class PantallaPersonalizacion:
@@ -116,30 +134,9 @@ class PantallaPersonalizacion:
             if self.botonCancion.manejarEvento(evento):
                 self.abrirPantallaMusica()
             
-            # explicit fallback: handle mouse clicks directly on botonJuego rect in case manejarEvento misses
-            if evento.type == pygame.MOUSEBUTTONDOWN:
-                try:
-                    pos = evento.pos
-                except Exception:
-                    pos = pygame.mouse.get_pos()
-                try:
-                    if self.botonJuego and self.botonJuego.rect.collidepoint(pos):
-                        print('DEBUG: botonJuego clicked at', pos)
-                        try:
-                            self.marcarUsuarioPersonalizadoYSalir()
-                        except Exception as e:
-                            print(f"Error al lanzar juego: {e}")
-                        # skip further handling for this event
-                        continue
-                except Exception:
-                    pass
-
+            # AQUÍ ESTÁ LA NUEVA FUNCIONALIDAD DEL BOTÓN "VAMOS AL JUEGO"
             if self.botonJuego.manejarEvento(evento):
-                # Al pulsar 'Vamos al juego' marcamos al usuario como personalizado y abrimos la pantalla de dificultad
-                try:
-                    self.marcarUsuarioPersonalizadoYSalir()
-                except Exception as e:
-                    print(f"Error al lanzar juego: {e}")
+                self.abrirPantallaDificultad()
             
             # Manejar dropdown
             temaSeleccionado = self.dropdownTema.manejarEvento(evento)
@@ -171,142 +168,55 @@ class PantallaPersonalizacion:
             self.temaActual  
         )
         pantallaMusica.ejecutar()
-
-    def _read_session_usuario(self):
-        import os, json
-        try:
-            repo_root = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
-            cwd = os.getcwd()
-            print(f'DEBUG: cwd={cwd}')
-            # Try several locations for session_user.json (now in dataBase folder)
-            candidates = [
-                os.path.join(repo_root, 'dataBase', 'session_user.json'),
-                os.path.join(cwd, 'dataBase', 'session_user.json'),
-                os.path.join(os.path.dirname(__file__), 'dataBase', 'session_user.json')
-            ]
-            for session_path in candidates:
-                try:
-                    print(f'DEBUG: buscando session_user en {session_path}')
-                    if os.path.exists(session_path):
-                        with open(session_path, 'r', encoding='utf-8') as f:
-                            try:
-                                d = json.load(f)
-                                usuario = d.get('usuario')
-                                print(f"DEBUG: session_user.json ({session_path}) contiene usuario={usuario}")
-                                return usuario
-                            except Exception as e:
-                                print(f"DEBUG: error leyendo session_user.json {session_path}: {e}")
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        return None
-
-    def marcarUsuarioPersonalizadoYSalir(self):
-        import os, json, subprocess, sys
-        usuario = self._read_session_usuario()
-        if not usuario:
-            # fallback: could prompt, but we'll try to find a single user or abort
-            # For safety, abort if no session user
-            print('No session usuario encontrado; no se marcará personalizado')
-            return
-
-        # Update usuarios.json: set personalizado = True for this usuario (case-insensitive match)
-        try:
-            repo_root = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
-            # usuarios.json is now in dataBase folder
-            usuarios_path = os.path.join(repo_root, 'dataBase', 'usuarios.json')
-            print(f'DEBUG: intentando leer usuarios.json en {usuarios_path}')
-            if os.path.exists(usuarios_path):
-                with open(usuarios_path, 'r', encoding='utf-8') as f:
-                    usuarios = json.load(f)
-            else:
-                usuarios = []
-
-            changed = False
-            for u in usuarios:
-                name = (u.get('usuario') or u.get('username') or '')
-                if name and name.lower() == usuario.lower():
-                    u['personalizado'] = True
-                    changed = True
-                    break
-
-            # If session user not found earlier (e.g., usuario was None), try a fallback:
-            if not usuario:
-                try:
-                    # If there's exactly one user, assume it's the current
-                    if len(usuarios) == 1:
-                        candidate = usuarios[0]
-                        name = (candidate.get('usuario') or candidate.get('username') or '')
-                        if name:
-                            usuario = name
-                            candidate['personalizado'] = True
-                            changed = True
-                            print(f"DEBUG: sesión faltante; único usuario en usuarios.json asumido: {usuario}")
-                    else:
-                        # If multiple users but exactly one is not personalized, use that one
-                        not_personalizados = [u for u in usuarios if not bool(u.get('personalizado', False))]
-                        if len(not_personalizados) == 1:
-                            candidate = not_personalizados[0]
-                            name = (candidate.get('usuario') or candidate.get('username') or '')
-                            if name:
-                                usuario = name
-                                candidate['personalizado'] = True
-                                changed = True
-                                print(f"DEBUG: sesión faltante; usuario no personalizado encontrado: {usuario}")
-                except Exception as e:
-                    print(f"DEBUG: error en fallback para determinar usuario: {e}")
-
-            if changed:
-                try:
-                    with open(usuarios_path, 'w', encoding='utf-8') as f:
-                        json.dump(usuarios, f, indent=4, ensure_ascii=False)
-                    print(f"DEBUG: usuarios.json actualizado para usuario {usuario}")
-                except Exception as e:
-                    print(f"DEBUG: error escribiendo usuarios.json: {e}")
-            else:
-                print('Usuario no encontrado en usuarios.json; no se actualizó personalizado')
-
-        except Exception as e:
-            print(f'Error al actualizar usuarios.json: {e}')
-
-        # Launch the pantallaDificultad (try import then subprocess)
-        # Before launching, stop this screen's loop and quit pygame so the window closes
-        try:
-            print('DEBUG: Deteniendo pantalla Personalizacion antes de lanzar dificultad')
+    
+    def abrirPantallaDificultad(self):
+        """
+        Abre la pantalla de selección de dificultad y luego el juego
+        Nueva funcionalidad para el botón "Vamos al juego"
+        """
+        print("Abriendo pantalla de dificultad...")
+        
+        # Crear y ejecutar la pantalla de dificultad con los colores personalizados
+        pantallaDificultad = PantallaDificultad(
+            self.pantalla,
+            self.colorFondoPersonalizado,
+            self.temaActual
+        )
+        
+        # Ejecutar la pantalla de dificultad y obtener la acción del usuario
+        accion, dificultad = pantallaDificultad.ejecutar()
+        
+        # Manejar la respuesta del usuario
+        if accion == 'JUGAR':
+            print(f"Iniciando juego con dificultad: {dificultad}")
+            
+            # Crear la pantalla del juego con los ajustes personalizados
+            pantallaJuego = PantallaJuego(
+                self.pantalla,
+                self.colorFondoPersonalizado,
+                self.temaActual
+            )
+            
+            # Pasar la dificultad seleccionada al juego
+            # (Puedes usar esto en el juego para ajustar la IA, velocidad, etc.)
+            pantallaJuego.dificultad = dificultad
+            
+            # Ejecutar el juego
+            volverAlMenu = pantallaJuego.ejecutar()
+            
+            # Si el usuario volvió del juego, continuar en personalización
+            if volverAlMenu:
+                print("Volviendo a personalización desde el juego...")
+                # No hacer nada, simplemente continuar el loop de personalización
+        
+        elif accion == 'VOLVER':
+            # El usuario volvió desde la pantalla de dificultad
+            print("Volviendo a personalización desde dificultad...")
+            # No hacer nada, simplemente continuar en personalización
+        
+        else:  # accion == 'QUIT'
+            # El usuario quiere salir completamente
             self.ejecutando = False
-            try:
-                pygame.quit()
-            except Exception:
-                pass
-        except Exception:
-            pass
-
-        # Try to launch the difficulty screen in a non-blocking way
-        try:
-            # Try import & run in a background thread to avoid blocking
-            import threading
-            try:
-                import juego.pantallaDificultad as pd
-                def _run_pd():
-                    try:
-                        pd.main()
-                    except Exception as e:
-                        print(f'Error en pd.main(): {e}')
-                t = threading.Thread(target=_run_pd, daemon=True)
-                t.start()
-                return
-            except Exception:
-                pass
-
-            # Fallback: spawn new python process non-blocking
-            python_exe = sys.executable or 'python'
-            script_path = os.path.join(repo_root, 'juego', 'pantallaDificultad.py')
-            if os.path.exists(script_path):
-                subprocess.Popen([python_exe, script_path])
-                return
-        except Exception as e:
-            print(f'Error al lanzar pantallaDificultad via subprocess/thread: {e}')
 
     def dibujar(self):
         #Dibuja todos los elementos de la pantalla

@@ -1,17 +1,19 @@
 # pantallaJuego.py
 # Pantalla de colocación de torres para Avatars VS Rooks
-# Versión limpia desde cero - CON MATRIZ AJUSTADA AL GRID
+# Versión con botón redondo integrado sin clase auxiliar
 
 import pygame
 import sys
 import os
 
 # Importar desde personalizacion
+# Configuración para que el módulo encuentre las carpetas de 'personalizacion'
 carpeta_actual = os.path.dirname(os.path.abspath(__file__))
 carpeta_padre = os.path.dirname(carpeta_actual)
 carpeta_personalizacion = os.path.join(carpeta_padre, 'personalizacion')
 sys.path.insert(0, carpeta_personalizacion)
 
+# Se necesita Boton (para los botones rectangulares) y constantes
 from constantes import FPS
 from componentes import Boton
 from clasesAvatarsRooks import Avatars, Rooks
@@ -52,8 +54,6 @@ class PantallaJuego:
         # Tamaño y posición del tablero 
         self.anchoTablero = 750  
         self.altoTablero = 900    
-        
-        # Posición
         self.tableroX = 0       
         self.tableroY = 0
         
@@ -72,8 +72,6 @@ class PantallaJuego:
         
         # === MATRIZ DEL JUEGO ===
         self.matriz = [[None for _ in range(self.columnas)] for _ in range(self.filas)]
-        
-        # Torre actualmente seleccionada
         self.torreSeleccionada = None
         
         # === FUENTES ===
@@ -98,8 +96,6 @@ class PantallaJuego:
         
         # === BOTONES DE TORRES === 
         self.botonesTorres = self.crearBotonesTorres()
-        
-        # === BOTÓN INICIAR JUEGO ===
         self.botonIniciar = self.crearBotonIniciar()
         
         # === GESTORES DE JUEGO ===
@@ -223,7 +219,7 @@ class PantallaJuego:
             self.matriz[fila][columna] = None
             print(f"🔄 Torre {idTorre} removida, +${valorDevolver}")
             
-            # ✅ Si el juego ya inició, eliminar del gestor también
+            # Si el juego ya inició, eliminar del gestor también
             if self.juegoIniciado and self.gestorTorres:
                 self.gestorTorres.eliminarTorre(fila, columna)
     
@@ -240,13 +236,13 @@ class PantallaJuego:
                     self.ejecutando = False
                     self.volver = True
             
-            # Clicks en botones de torres (✅ AHORA FUNCIONAN DURANTE PARTIDA)
+            # Clicks en botones de torres
             for boton in self.botonesTorres:
                 if boton.manejarEvento(evento):
                     self.torreSeleccionada = boton.id_torre
                     print(f"🎯 Torre seleccionada: {self.torreSeleccionada}")
             
-            # Click en botón Iniciar (✅ SOLO VISIBLE ANTES DE INICIAR)
+            # Click en botón Iniciar
             if not self.juegoIniciado:
                 if self.botonIniciar.manejarEvento(evento):
                     self.iniciarJuego()
@@ -333,15 +329,15 @@ class PantallaJuego:
         # 7. Título
         self.dibujarTitulo()
         
-        # 8. Botones de torres (✅ SIEMPRE VISIBLES)
+        # 8. Botones de torres
         for boton in self.botonesTorres:
             boton.dibujar(self.pantalla)
         
-        # 9. Botón iniciar (✅ SOLO ANTES DE INICIAR)
+        # 9. Botón iniciar
         if not self.juegoIniciado:
             self.botonIniciar.dibujar(self.pantalla)
         
-        # 10. Dinero (✅ SIEMPRE VISIBLE)
+        # 10. Dinero
         self.dibujarDinero()
         
         # 11. Estadísticas del juego
@@ -368,7 +364,7 @@ class PantallaJuego:
         texto = f"Dinero: ${self.dinero}"
         color = self.colorFondo.obtenerColorTitulo()
         render = self.fuenteInfo.render(texto, True, color)
-        # ✅ Ajustar posición Y según si hay botón Iniciar
+        # Ajustar posición Y según si hay botón Iniciar
         y = 550 if not self.juegoIniciado else 700
         self.pantalla.blit(render, (850, y))
     
@@ -473,5 +469,5 @@ class PantallaJuego:
 # Para testing directo
 # ============================================================================
 if __name__ == "__main__":
-    print("⚠️ Este archivo debe ser importado desde otra pantalla")
+    print("Este archivo debe ser importado desde otra pantalla")
     print("Para probar, usa el archivo testJuego.py")
