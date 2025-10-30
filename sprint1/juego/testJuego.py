@@ -2,16 +2,25 @@ import pygame
 import sys
 import os
 
-# Configurar imports
+# Configurar rutas para los imports
 carpeta_actual = os.path.dirname(os.path.abspath(__file__))
 carpeta_sprint1 = os.path.dirname(carpeta_actual)
+
+# Agregar carpeta de personalización al path
 carpeta_personalizacion = os.path.join(carpeta_sprint1, 'personalizacion')
 sys.path.insert(0, carpeta_personalizacion)
 
-from fondo import ColoresFondoDisponibles
-from temas import ConfiguracionTemas
-from constantes import PANTALLA_COMPLETA
-from pantallaJuego import PantallaJuego
+# Agregar carpeta de salón de la fama al path
+carpeta_salon_fama = os.path.join(carpeta_sprint1, 'salonDeFama')
+sys.path.insert(0, carpeta_salon_fama)
+
+# Agregar carpeta sprint1 al path para encontrar el módulo juego
+sys.path.insert(0, carpeta_sprint1)
+
+from personalizacion.fondo import ColoresFondoDisponibles
+from personalizacion.temas import ConfiguracionTemas
+from personalizacion.constantes import PANTALLA_COMPLETA
+from juego.pantallaJuego import PantallaJuego
 
 # Inicializar pygame
 pygame.init()

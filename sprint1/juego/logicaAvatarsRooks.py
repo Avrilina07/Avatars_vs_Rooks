@@ -118,6 +118,8 @@ class Avatar:
         
         # Guardar configuración del grid
         self.gridConfig = gridConfig
+        # Puntos que otorga este avatar al morir
+        self.puntos = datosAvatar.get("puntos", 0)
     
     def calcularPosicion(self, gridConfig):
         """Calcula la posición visual del avatar en el grid"""
@@ -238,9 +240,11 @@ class Avatar:
         if self.vidaActual <= 0:
             self.vivo = False
             print(f"💀 {self.tipo} eliminado en fila {self.fila}")
-            return True  # Retorna True si murió
-        
-        return False
+            # Retornar los puntos que otorga al morir
+            return self.puntos
+
+        # Si no murió, retornar 0 puntos
+        return 0
     
     def dibujar(self, pantalla):
         """Dibuja el avatar y sus proyectiles"""
@@ -513,6 +517,10 @@ class GestorAvatars:
         # Control de spawn
         self.tiempoSpawn = 0
         
+        # ← AGREGADO: acumuladores de puntos y conteo de avatars eliminados
+        self.puntosGanados = 0  # Acumulador de puntos del frame actual
+        self.avatarsMatados = 0
+        
         # Instanciar clase Avatars para obtener datos
         self.datosAvatars = Avatars()
         
@@ -608,14 +616,23 @@ class GestorAvatars:
                         print(f"💥 Proyectil de {avatar.tipo} impactó torre {torre.tipo}")
                         break
         
+        # ← AGREGADO: resetear puntos acumulados en este frame
+        self.puntosGanados = 0
+
         # Verificar colisiones de proyectiles de torres con avatars
         for torre in torres:
             for proyectil in torre.proyectiles:
                 for avatar in self.avatarsActivos:
                     if proyectil.colisionaConAvatar(avatar):
-                        avatar.recibirDaño(proyectil.daño)
+                        # Ahora recibirDaño retorna puntos si el avatar murió, 0 si no
+                        puntos = avatar.recibirDaño(proyectil.daño)
                         proyectil.activo = False
-                        print(f"💥 Proyectil de torre {torre.tipo} impactó {avatar.tipo}")
+                        if puntos > 0:
+                            self.puntosGanados += puntos
+                            self.avatarsMatados += 1
+                            print(f"� +{puntos} puntos por eliminar {avatar.tipo}")
+                        else:
+                            print(f"�💥 Proyectil de torre {torre.tipo} impactó {avatar.tipo}")
                         break
     
     def actualizarSpawn(self):
@@ -687,6 +704,12 @@ class GestorAvatars:
             "gano": self.jugadorGano,
             "resultado": self.causaResultado
         }
+
+    def obtenerYResetearPuntos(self):
+        """Obtiene los puntos ganados este frame y los resetea"""
+        puntos = self.puntosGanados
+        self.puntosGanados = 0
+        return puntos
 
 
 class GestorTorres:

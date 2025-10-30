@@ -12,6 +12,8 @@ class Avatars:
             "duracion_aparicion": 17,
             "duracion_ataque_min": 1,  
             "duracion_ataque_max": 5  
+            ,
+            "puntos": 10  # ← AGREGADO: puntos concedidos al morir
         } 
         self.escudero = {
             "vida": 10,
@@ -19,6 +21,8 @@ class Avatars:
             "duracion_aparicion": 17,
             "duracion_ataque_min": 1,
             "duracion_ataque_max": 5
+            ,
+            "puntos": 15  # ← AGREGADO
         }
         self.lenador = {
             "vida": 25,
@@ -26,6 +30,8 @@ class Avatars:
             "duracion_aparicion": 20,
             "duracion_ataque_min": 1,
             "duracion_ataque_max": 5
+            ,
+            "puntos": 25  # ← AGREGADO
         }
         self.canibal = {
             "vida": 25,
@@ -33,6 +39,8 @@ class Avatars:
             "duracion_aparicion": 20,
             "duracion_ataque_min": 1,
             "duracion_ataque_max": 5
+            ,
+            "puntos": 30  # ← AGREGADO
         }
 
 class Rooks:
