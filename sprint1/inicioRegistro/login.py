@@ -59,27 +59,21 @@ class LoginApp:
         self.fieldEdited = {}
 
         # main frame
-        outer = tk.Frame(self.root, bg='#B41214')
-        outer.pack(fill='both', expand=True)
-        self.main_frame = tk.Frame(outer, bg='#B41214')
-        self.main_frame.place(relx=0.5, rely=0.5, anchor='center')
-        try:
-            self.main_frame.configure(padx=20, pady=20)
-        except Exception:
-            pass
+        self.main_frame = tk.Frame(self.root, bg='red')
+        self.main_frame.pack(fill='both', expand=True, padx=20, pady=20)
         # header links
-        header_frame = tk.Frame(outer, bg='#B41214')
-        header_frame.place(x=10, y=10, anchor='nw')
+        header_frame = tk.Frame(self.main_frame, bg='red')
+        header_frame.pack(fill='x', pady=(0, 10))
 
-        self.helpLink = tk.Label(header_frame, text="Ayuda", fg='blue', bg='#B41214', cursor='hand2', font=('Arial', 9, 'underline'))
+        self.helpLink = tk.Label(header_frame, text="Ayuda", fg='blue', bg='red', cursor='hand2', font=('Arial', 9, 'underline'))
         self.helpLink.pack(side='left')
         # enlazar click de ayuda a un handler
         self.helpLink.bind('<Button-1>', lambda e: self.showHelp())
-        self.creditsLink = tk.Label(header_frame, text="Creditos", fg='blue', bg='#B41214', cursor='hand2', font=('Arial', 9, 'underline'))
+        self.creditsLink = tk.Label(header_frame, text="Creditos", fg='blue', bg='red', cursor='hand2', font=('Arial', 9, 'underline'))
         self.creditsLink.pack(side='left', padx=(10, 0))
 
         # title
-        self.titleLabel = tk.Label(self.main_frame, text="Inicio de Sesión", font=('Arial', 12), bg='#B41214')
+        self.titleLabel = tk.Label(self.main_frame, text="Inicio de Sesión", font=('Arial', 12), bg='red')
         self.titleLabel.pack(pady=10)
 
         # helper to register widgets for autosave/placeholder behavior
@@ -100,7 +94,7 @@ class LoginApp:
         registerWidget(self.entryUsername, "usuario/email/telefono")
 
         # password (with show/hide button)
-        pw_frame = tk.Frame(self.main_frame, bg='#B41214')
+        pw_frame = tk.Frame(self.main_frame, bg='red')
         pw_frame.pack(pady=5)
         self.entryPassword = tk.Entry(pw_frame, font=('Arial', 10), width=28, show='*')
         self.entryPassword.pack(side=tk.LEFT, ipady=5)
@@ -110,7 +104,7 @@ class LoginApp:
         self.btnEye.pack(side=tk.LEFT, padx=4)
 
         # forgot password link
-        self.forgotLink = tk.Label(self.main_frame, text="¿Olvidaste tu contraseña?", fg='blue', bg='#B41214', cursor='hand2', font=('Arial', 9, 'underline'))
+        self.forgotLink = tk.Label(self.main_frame, text="¿Olvidaste tu contraseña?", fg='blue', bg='red', cursor='hand2', font=('Arial', 9, 'underline'))
         self.forgotLink.pack(pady=5)
         self.forgotLink.bind('<Button-1>', lambda e: self.goToRecovery())
 
@@ -119,7 +113,7 @@ class LoginApp:
         self.loginBtn.pack(pady=10)
 
         # language selector (display names in native language)
-        idioma_frame = tk.Frame(self.main_frame, bg='#B41214')
+        idioma_frame = tk.Frame(self.main_frame, bg='red')
         idioma_frame.pack(anchor='e', pady=5, fill='x')
 
         # map display name -> internal key (display includes flag emoji)
@@ -137,20 +131,20 @@ class LoginApp:
         registerWidget(self.languageCombo)
 
         # alternate methods separator
-        separator_frame = tk.Frame(self.main_frame, bg='#B41214')
+        separator_frame = tk.Frame(self.main_frame, bg='red')
         separator_frame.pack(fill='x', pady=8)
-        tk.Frame(separator_frame, bg='black', height=1).pack(side='left', fill='x', expand=True, padx=5)
+        tk.Frame(separator_frame, bg='gray', height=1).pack(side='left', fill='x', expand=True, padx=5)
         # keep on self so translations can update it dynamically
-        self.otherMethodsLabel = tk.Label(separator_frame, text="Otros métodos de inicio de sesión", bg='#B41214', font=('Arial', 9))
+        self.otherMethodsLabel = tk.Label(separator_frame, text="Otros métodos de inicio de sesión", bg='red', font=('Arial', 9))
         self.otherMethodsLabel.pack(side='left')
-        tk.Frame(separator_frame, bg='black', height=1).pack(side='left', fill='x', expand=True, padx=5)
+        tk.Frame(separator_frame, bg='gray', height=1).pack(side='left', fill='x', expand=True, padx=5)
 
         # facial recognition button (will attempt face login)
         self.facialBtn = tk.Button(self.main_frame, text="Reconocimiento Facial", font=('Arial', 10), width=20, command=self.loginWithFace)
         self.facialBtn.pack(pady=8)
 
         # register link
-        self.registerLink = tk.Label(self.main_frame, text="Registrarse", fg='blue', bg='#B41214', cursor='hand2', font=('Arial', 9, 'underline'))
+        self.registerLink = tk.Label(self.main_frame, text="Registrarse", fg='blue', bg='red', cursor='hand2', font=('Arial', 9, 'underline'))
         self.registerLink.pack(pady=5)
         self.registerLink.bind('<Button-1>', lambda e: self.goToRegister())
 
@@ -629,8 +623,7 @@ class LoginApp:
             help_window.geometry(f'+{x}+{y}')
             
         except Exception as e:
-            print(f'Error mostrando ayuda: {e}')
-            messagebox.showerror('Error', f'No se pudo cargar la ayuda: {e}', parent=self.root)
+            messagebox.showerror('Error', f'No se pudo mostrar la ayuda: {str(e)}')
 
     def _prompt_new_password_for_user(self, usuario):
         """Prompt the user twice for a new password, validate and return hashed value or None."""

@@ -194,7 +194,8 @@ class PantallaPersonalizacion:
             pantallaJuego = PantallaJuego(
                 self.pantalla,
                 self.colorFondoPersonalizado,
-                self.temaActual
+                self.temaActual,
+                dificultad
             )
             
             # Pasar la dificultad seleccionada al juego

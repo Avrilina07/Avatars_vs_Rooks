@@ -6,28 +6,28 @@ from clasesAvatarsRooks import Avatars, Rooks
 
 
 class Proyectil:
-    """Representa un proyectil disparado por un avatar"""
+    """Representa un proyectil disparado por un avatar o torre"""
     
-    def __init__(self, x, y, daño, tipo):
-        
+    def __init__(self, x, y, daño, tipo, esAvatar=True):
         self.x = x
         self.y = y
         self.daño = daño
-        self.tipo = tipo # tipo de avatar que lo disparó (para color)
+        self.tipo = tipo
         self.activo = True
+        self.esAvatar = esAvatar  # True si lo disparó un avatar, False si fue una torre
         
-        # Velocidad del proyectil (píxeles por frame)
-        self.velocidad = -5  # Negativo = hacia arriba
+        # Velocidad del proyectil (dirección opuesta según quién dispara)
+        self.velocidad = -5 if esAvatar else 5  # Avatars hacia arriba (-), Torres hacia abajo (+)
         
-        # Tamaño del proyectil
         self.radio = 5
     
     def actualizar(self):
-        """Mueve el proyectil hacia arriba"""
+        """Mueve el proyectil"""
         if self.activo:
             self.y += self.velocidad
             
-            if self.y < 0:
+            # Desactivar si sale de pantalla (ajustar según tu altura de pantalla)
+            if self.y < 0 or self.y > 900:
                 self.activo = False
     
     def dibujar(self, pantalla):
@@ -35,40 +35,47 @@ class Proyectil:
         if not self.activo:
             return
         
-        # Color del proyectil según tipo de avatar (se puede cambiar si se utilizan imágenes)
-        colores = {
-            "flechador": (255, 215, 0),    # Dorado
-            "escudero": (135, 206, 250),   # Azul claro
-            "lenador": (210, 105, 30),     # Chocolate
-            "canibal": (255, 69, 0)        # Rojo naranja
+        # Colores para avatars
+        coloresAvatars = {
+            "flechador": (255, 215, 0),    # Amarillo dorado
+            "escudero": (100, 149, 237),   # Azul aciano
+            "lenador": (139, 69, 19),      # Marrón
+            "canibal": (220, 20, 60)       # Rojo carmesí
         }
         
-        color = colores.get(self.tipo, (255, 255, 255))
+        # Colores para torres
+        coloresTorres = {
+            "T1": (255, 235, 150),  # Arena - amarillo claro
+            "T2": (200, 200, 200),  # Roca - gris claro
+            "T3": (255, 140, 0),    # Fuego - naranja oscuro
+            "T4": (0, 191, 255)     # Agua - azul cielo profundo
+        }
         
-        # Dibujar proyectil circular
+        if self.esAvatar:
+            color = coloresAvatars.get(self.tipo, (255, 255, 255))
+        else:
+            color = coloresTorres.get(self.tipo, (255, 255, 255))
+        
         pygame.draw.circle(pantalla, color, (int(self.x), int(self.y)), self.radio)
-        pygame.draw.circle(pantalla, (255, 255, 255), (int(self.x), int(self.y)), self.radio, 1)
+        pygame.draw.circle(pantalla, (0, 0, 0), (int(self.x), int(self.y)), self.radio, 1)
     
     def colisionaConTorre(self, torre):
-        """
-        Verifica colisión con una torre
-        
-        Args:
-            torre: objeto Torre
-            
-        Returns:
-            bool: True si hay colisión
-        """
-        if not self.activo or not torre.viva:
+        """Verifica colisión con una torre (solo proyectiles de avatars)"""
+        if not self.activo or not torre.viva or not self.esAvatar:
             return False
         
-        # Radio de colisión de torre
         radioTorre = 25
-        
-        # Distancia entre proyectil y torre
         distancia = ((self.x - torre.x)**2 + (self.y - torre.y)**2)**0.5
-        
         return distancia < (self.radio + radioTorre)
+    
+    def colisionaConAvatar(self, avatar):
+        """Verifica colisión con un avatar (solo proyectiles de torres)"""
+        if not self.activo or not avatar.vivo or self.esAvatar:
+            return False
+        
+        radioAvatar = 20
+        distancia = ((self.x - avatar.x)**2 + (self.y - avatar.y)**2)**0.5
+        return distancia < (self.radio + radioAvatar)
 
 
 class Avatar:
@@ -104,7 +111,7 @@ class Avatar:
         self.calcularPosicion(gridConfig)
         
         # velocidad fija
-        self.velocidad = 1.0  # Píxeles por frame (ajustar si es muy lento/rápido)
+        self.velocidad = 0.5  # Píxeles por frame (ajustar si es muy lento/rápido)
         
         # Lista de proyectiles disparados por este avatar
         self.proyectiles = []
@@ -142,7 +149,7 @@ class Avatar:
         if self.apareciendo:
             self.tiempoAparicion += 1
             
-            # ⚙️ AJUSTAR: Convertir duracion_aparicion (segundos) a frames
+            # Convertir duracion_aparicion (segundos) a frames
             if self.tiempoAparicion >= 3 * fps:
                 self.apareciendo = False
                 print(f"✨ {self.tipo} terminó de aparecer en columna {self.columna}")
@@ -240,17 +247,22 @@ class Avatar:
         if not self.vivo:
             return
         
-        # ⚙️ AJUSTAR: Colores por tipo de avatar
+        # Colores de avatars
         colores = {
-            "flechador": (255, 200, 0),    # Amarillo
-            "escudero": (100, 100, 255),   # Azul
-            "leñador": (139, 69, 19),      # Marrón
-            "caníbal": (255, 0, 0)         # Rojo
+            "flechador": (255, 215, 0),    # Amarillo dorado
+            "escudero": (100, 149, 237),   # Azul aciano
+            "lenador": (139, 69, 19),      # Marrón silla de montar
+            "canibal": (220, 20, 60)       # Rojo carmesí
         }
         
+        # Usar get() con color por defecto blanco si no encuentra
         color = colores.get(self.tipo, (255, 255, 255))
         
-        # ⚙️ AJUSTAR: Tamaño del avatar
+        # Imprimir para debug (quitar después)
+        if color == (255, 255, 255):
+            print(f"⚠️ Avatar tipo '{self.tipo}' no tiene color asignado")
+        
+        # Tamaño del avatar
         radio = 20
         
         if self.apareciendo:
@@ -330,6 +342,9 @@ class Torre:
         self.viva = True
         self.tiempoAtaque = 0
         
+        # ⬅️ NUEVO: Lista de proyectiles
+        self.proyectiles = []
+        
         # Calcular posición visual
         self.calcularPosicion(gridConfig)
         
@@ -348,11 +363,15 @@ class Torre:
         self.y = gridY + (self.fila * altoCasilla) + (altoCasilla / 2)
     
     def actualizar(self, avatars, fps):
-        
-        """Actualiza la torre (ataca avatars en rango)"""
-        
+        """Actualiza la torre (dispara proyectiles a avatars en rango)"""
         if not self.viva:
             return
+        
+        # Actualizar proyectiles existentes
+        for proyectil in self.proyectiles[:]:
+            proyectil.actualizar()
+            if not proyectil.activo:
+                self.proyectiles.remove(proyectil)
         
         # Buscar avatars en rango
         avatarsEnRango = []
@@ -363,23 +382,24 @@ class Torre:
             if self.dentroRango(avatar):
                 avatarsEnRango.append(avatar)
         
-        # Si hay avatars en rango, atacar al más cercano
+        # Si hay avatars, disparar al más cercano
         if avatarsEnRango:
-            # Ordenar por distancia (más cercano primero)
-            avatarsEnRango.sort(key=lambda a: abs(a.fila - self.fila) + abs(a.columna - self.columna))
-            
+            avatarsEnRango.sort(key=lambda a: abs(a.fila - self.fila))
             self.atacar(avatarsEnRango[0], fps)
     
     def atacar(self, avatar, fps):
-        """Ataca un avatar"""
+        """Dispara un proyectil hacia el avatar"""
         self.tiempoAtaque += 1
         
         framesPorAtaque = self.duracionAtaque * fps
         
         if self.tiempoAtaque >= framesPorAtaque:
-            avatar.recibirDaño(self.daño)
+            # Crear proyectil
+            proyectil = Proyectil(self.x, self.y, self.daño, self.tipo, esAvatar=False)
+            self.proyectiles.append(proyectil)
+            
             self.tiempoAtaque = 0
-            print(f"⚔️ Torre {self.tipo} ({self.fila}, {self.columna}) atacó {avatar.tipo}")
+            print(f"🏹 Torre {self.tipo} ({self.fila}, {self.columna}) disparó a {avatar.tipo}")
     
     def dentroRango(self, avatar):
         """Verifica si un avatar está en la misma columna que la torre"""
@@ -398,7 +418,7 @@ class Torre:
         return False
     
     def dibujar(self, pantalla):
-        """Dibuja la torre con barra de vida.
+        """Dibuja la torre y sus proyectiles.
         Los siguientes datos se pueden modificar para añadir las imágenes finales para el juego"""
         if not self.viva:
             return
@@ -425,6 +445,10 @@ class Torre:
         
         # Dibujar rango de ataque (opcional para debug) (quitar el # al siguiente comentario si se quiere aplicar)
         # self.dibujarRangoAtaque(pantalla)
+        
+        # Dibujar proyectiles
+        for proyectil in self.proyectiles:
+            proyectil.dibujar(pantalla)
     
     def dibujarBarraVida(self, pantalla, radio):
         """Dibuja barra de vida sobre la torre"""
@@ -573,15 +597,25 @@ class GestorAvatars:
                 self.juegoActivo = False
                 print(f"💀 ¡DERROTA! {self.causaResultado}")
                 return
-            
-            # Verificar colisiones de proyectiles con torres
+        
+        # Verificar colisiones de proyectiles de avatars con torres
+        for avatar in self.avatarsActivos:
             for proyectil in avatar.proyectiles:
                 for torre in torres:
                     if proyectil.colisionaConTorre(torre):
-                        # Proyectil impacta torre
                         torre.recibirDaño(proyectil.daño)
                         proyectil.activo = False
-                        print(f"💥 Proyectil de {avatar.tipo} impactó torre en ({torre.fila}, {torre.columna})")
+                        print(f"💥 Proyectil de {avatar.tipo} impactó torre {torre.tipo}")
+                        break
+        
+        # Verificar colisiones de proyectiles de torres con avatars
+        for torre in torres:
+            for proyectil in torre.proyectiles:
+                for avatar in self.avatarsActivos:
+                    if proyectil.colisionaConAvatar(avatar):
+                        avatar.recibirDaño(proyectil.daño)
+                        proyectil.activo = False
+                        print(f"💥 Proyectil de torre {torre.tipo} impactó {avatar.tipo}")
                         break
     
     def actualizarSpawn(self):
@@ -662,7 +696,8 @@ class GestorTorres:
         
         self.torres = []
         self.gridConfig = gridConfig
-        self.datosTorres = datosTorres  # Guarda referencia a datos
+        self.datosTorres = datosTorres
+        self.matriz = matriz  # Guardar referencia a la matriz
         self.crearTorresDesdeMatriz(matriz, datosTorres)
     
     def crearTorresDesdeMatriz(self, matriz, datosTorres):
@@ -718,6 +753,14 @@ class GestorTorres:
         for torre in self.torres:
             if torre.viva:
                 torre.actualizar(avatars, fps)
+        
+        # Limpieza de matriz
+        torres_destruidas = [t for t in self.torres if not t.viva]
+        for torre in torres_destruidas:
+            # Limpiar la casilla en la matriz
+            if self.matriz[torre.fila][torre.columna] == torre.tipo:
+                self.matriz[torre.fila][torre.columna] = None
+                print(f"🧹 Casilla ({torre.fila}, {torre.columna}) limpiada en la matriz")
         
         # Eliminar torres destruidas
         self.torres = [t for t in self.torres if t.viva]
