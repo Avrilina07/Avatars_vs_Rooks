@@ -417,26 +417,43 @@ class LoginApp:
                     print(f'DEBUG: session_user.json escrito con usuario {actual_username}')
                 except Exception:
                     print('DEBUG: no se pudo escribir session_user.json')
-                # check personalizado flag and launch personalizacion if needed
+                # Verificar si el usuario ya tiene preferencias guardadas
+                tiene_preferencias = False
                 try:
-                    personalizado = False
-                    if other and isinstance(other, dict):
-                        personalizado = bool(other.get('personalizado', False))
-                except Exception:
-                    personalizado = False
+                    # Buscar archivo de preferencias en dataBase
+                    prefs_path = os.path.join(os.path.dirname(__file__), '..', 'dataBase', 'preferencias_usuario.json')
+                    if os.path.exists(prefs_path):
+                        with open(prefs_path, 'r', encoding='utf-8') as f:
+                            todas_prefs = json.load(f)
+                            # Verificar si este usuario tiene preferencias guardadas
+                            if actual_username in todas_prefs:
+                                tiene_preferencias = True
+                                print(f'DEBUG: Usuario {actual_username} tiene preferencias guardadas')
+                            else:
+                                print(f'DEBUG: Usuario {actual_username} NO tiene preferencias guardadas')
+                    else:
+                        print('DEBUG: Archivo de preferencias no existe aún')
+                except Exception as e:
+                    print(f'DEBUG: Error al verificar preferencias: {e}')
+                    tiene_preferencias = False
+                
                 try:
                     self.root.destroy()
                 except Exception:
                     pass
-                # If user is already personalized, open the difficulty pantalla; otherwise open personalizacion
+                
+                # Si el usuario ya tiene preferencias, ir directo a pantalla dificultad con sus datos
+                # Si no tiene preferencias, ir a personalización
                 try:
-                    if personalizado:
+                    if tiene_preferencias:
                         try:
+                            print(f'DEBUG: Abriendo pantalla dificultad con preferencias guardadas')
                             self._launch_pantalla_dificultad()
                         except Exception as e:
                             messagebox.showerror('Error', f'No se pudo abrir Pantalla dificultad: {e}')
                     else:
                         try:
+                            print(f'DEBUG: Primera vez del usuario, abriendo personalización')
                             self._launch_personalizacion()
                         except Exception as e:
                             messagebox.showerror('Error', f'No se pudo abrir Personalización: {e}')
@@ -1226,27 +1243,46 @@ class LoginApp:
         # threshold: empirical; for our simple mean-face approach use a high threshold
         print(f'DEBUG: Mejor coincidencia: {best_user} con distancia {best_dist}')
         if best_user and best_dist < 15000:
-            # try to extract personalizado flag from usuarios.json
-            pflag = False
+            # Verificar si el usuario ya tiene preferencias guardadas
+            tiene_preferencias = False
             try:
-                for u in usuarios_list:
-                    if (u.get('usuario') or u.get('username')) == best_user:
-                        pflag = bool(u.get('personalizado', False))
-                        break
+                # Buscar archivo de preferencias en dataBase
+                prefs_path = os.path.join(os.path.dirname(__file__), '..', 'dataBase', 'preferencias_usuario.json')
+                if os.path.exists(prefs_path):
+                    with open(prefs_path, 'r', encoding='utf-8') as f:
+                        todas_prefs = json.load(f)
+                        if best_user in todas_prefs:
+                            tiene_preferencias = True
+                            print(f'DEBUG: Usuario {best_user} tiene preferencias guardadas')
+                        else:
+                            print(f'DEBUG: Usuario {best_user} NO tiene preferencias guardadas')
+            except Exception as e:
+                print(f'DEBUG: Error al verificar preferencias para login facial: {e}')
+                tiene_preferencias = False
+            
+            messagebox.showinfo('Éxito', f'Usuario reconocido: {best_user}')
+            
+            # Escribir session_user.json para que otros módulos sepan quién está logueado
+            try:
+                self._write_session_user(best_user)
+                print(f'DEBUG: session_user.json escrito con usuario {best_user}')
             except Exception:
-                pflag = False
-            messagebox.showinfo('Éxito', f'Usuario reconocido: {best_user} - Personalizado: {pflag}')
+                print('DEBUG: no se pudo escribir session_user.json')
+            
             try:
                 self.root.destroy()
             except Exception:
                 pass
-            if pflag:
+            
+            if tiene_preferencias:
                 try:
+                    print(f'DEBUG: Login facial - Abriendo pantalla dificultad con preferencias guardadas')
                     self._launch_pantalla_dificultad()
                 except Exception as e:
                     messagebox.showerror('Error', f'No se pudo abrir Pantalla dificultad: {e}')
             else:
                 try:
+                    print(f'DEBUG: Login facial - Primera vez del usuario, abriendo personalización')
                     self._launch_personalizacion()
                 except Exception as e:
                     messagebox.showerror('Error', f'No se pudo abrir Personalización: {e}')

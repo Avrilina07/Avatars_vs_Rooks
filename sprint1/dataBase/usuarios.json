@@ -74,5 +74,33 @@
         "personalizado": false,
         "fechaRegistro": "29/10/2025 22:13:02",
         "mmaa": "gAAAAABpAuXO43bmSpS96eXhNVz1ewT-Pwm2rTF6SSmKvBpjvhiaoWQbV-4_eN01GbwvtXF_Va_A7h8tV6RESSpe9KfbUYDoYg=="
+    },
+    {
+        "nombre": "Diego",
+        "apellidos": "Gomez",
+        "usuario": "DiegoG",
+        "email": "gAAAAABpA26yficG0Fronrad7iRUKr3qmt2DL3W4z4-lPAJSfmJIE6lC-29J7rbpRLCX88U2uscziGr7j7SSYunmXibMkiu-E7k1ieqaDM2P6enSOl5Nys4=",
+        "contrasenaHash": "$2b$12$0rptjMRBKoPz3opwm32cv.I7AqoveAv0XqCIzRqHhjbcxi4hUyTTO",
+        "fechaNacimiento": "19/10/2007",
+        "telefono": "gAAAAABpA26y2Ommugl8o3r45rJL3682SWr2X_Lf_yJJVG6q8100FC8ZsnBVebTkBDXR6VGvuvwRht8R91YFA1SwQuejkKySqIqWwaed3Dc_RSq9LCydJ7M=",
+        "preguntaSeguridad": "¿Cuál es la mejor carrera del mundo?",
+        "respuestaSeguridad": "gAAAAABpA26y9dtM3KzsJQmOox35ttSUTvfFpnxJbl-uEB0A18wZl5MlvDJE5Ijoi0RiebWJOebHK6_0qo-cQ1J5EzMwZ_6gOA==",
+        "personalizado": false,
+        "fechaRegistro": "30/10/2025 07:57:06",
+        "mmaa": "gAAAAABpA26yidM83FnGkOxj-Q17RSo7dNGn_sDFR8qstOcWH9eBiK9dMgvErmRNFhLgJWL4xqNIVyr4sy8pNU-pbXnDXmPPCg=="
+    },
+    {
+        "nombre": "Jorge",
+        "apellidos": "Arias",
+        "usuario": "Jorge2",
+        "email": "gAAAAABpA3OKcrNvcC5WIfwMX0RqUBNsXeF1FJeYoNOB1WyU7g9jp31JGyyMPEsJOjECBlWB2OxCEdfEx-qp_rK8Enb-ItFXvQ==",
+        "contrasenaHash": "$2b$12$dTHoos.QEYzFKNn2GrwFOOQ5ob5pf5/chVreU.Oqn5yxP5MhYKwXG",
+        "fechaNacimiento": "30/10/2009",
+        "telefono": "gAAAAABpA3OKdwG_v9gEwWzpf1rE3lts9Nfb1ta8sSxdryVggfIao3WbJfSM7yB9B0Hj8JpRmeKFpPZMo8YfxKogu6D9O8NgBkO3ud583v5erOvvL-CN6pQ=",
+        "preguntaSeguridad": "¿Cuál es el mejor equipo de futbol?",
+        "respuestaSeguridad": "gAAAAABpA3OKJ9h8u1DmSC_oO1wKwUehA2kZDprNqy_CdXjsNM0Hy3hP-Km6mlZ4OcSngapRVWDsH4x3R499CD6GNtXBs_oDXg==",
+        "personalizado": false,
+        "fechaRegistro": "30/10/2025 08:17:46",
+        "mmaa": "gAAAAABpA3OKY11CXOlA1Ih4yaB_a5tIqjIV6MpLQKqZaBpHzZChEZZ6G8mdtL5gfdTodcyNBLOx3vtv2LEykHxazehNQrC95Q=="
     }
 ]

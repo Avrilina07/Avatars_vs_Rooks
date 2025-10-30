@@ -10,6 +10,7 @@ from fondo import ColoresFondoDisponibles
 from spotify_api import SpotifyAPI
 from pantalla_musica import PantallaMusica
 from pantalla_interfaz import PantallaPersonalizacionInterfaz
+from preferencias_usuario import GestorPreferencias
 
 carpeta_actual = os.path.dirname(os.path.abspath(__file__))  # personalizacion
 carpeta_sprint1 = os.path.dirname(carpeta_actual)  # sprint1
@@ -32,6 +33,12 @@ class PantallaPersonalizacion:
     #Pantalla principal de personalización
     
     def __init__(self):
+        # Inicializar gestor de preferencias
+        self.gestor_preferencias = GestorPreferencias()
+        
+        # Cargar preferencias del usuario
+        preferencias = self.gestor_preferencias.cargar_preferencias()
+        
         # Configurar pantalla
         if PANTALLA_COMPLETA:
             self.pantalla = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
@@ -50,11 +57,13 @@ class PantallaPersonalizacion:
         # Inicializar API de Spotify para control de volumen
         self.spotify = SpotifyAPI()
         
-        # Tema actual
-        self.temaActual = ConfiguracionTemas.CLARO
+        # Cargar tema desde preferencias
+        self.temaActual = self._obtener_tema_por_nombre(preferencias.get("tema", "Claro (Predeterminado)"))
         
-        # Color de fondo personalizado (por defecto el rojo inicial)
-        self.colorFondoPersonalizado = ColoresFondoDisponibles.ROJO_MUY_OSCURO_3
+        # Cargar color de fondo desde preferencias
+        self.colorFondoPersonalizado = self._obtener_color_por_nombre(
+            preferencias.get("color_fondo", "Vino Oscuro")
+        )
         
         # Fuentes
         self.fuenteTitulo = pygame.font.SysFont('Arial', 90, bold=True)
@@ -68,10 +77,52 @@ class PantallaPersonalizacion:
         self.sliderVolumen = None
         
         self.actualizarPosiciones()
+        
+        # Cargar volumen desde preferencias
+        volumen_guardado = preferencias.get("volumen", 50)
+        if self.sliderVolumen:
+            self.sliderVolumen.valor = volumen_guardado
+            self.spotify.cambiarVolumen(volumen_guardado)
+    
+    def _obtener_tema_por_nombre(self, nombre_tema):
+        """
+        Obtiene un objeto Tema a partir de su nombre.
+        
+        Args:
+            nombre_tema: Nombre del tema
+            
+        Returns:
+            Tema: Objeto tema correspondiente o tema por defecto
+        """
+        todos_temas = ConfiguracionTemas.obtenerTodos()
+        for tema in todos_temas:
+            if tema.nombre == nombre_tema:
+                return tema
+        # Si no se encuentra, devolver tema por defecto
+        return ConfiguracionTemas.CLARO
+    
+    def _obtener_color_por_nombre(self, nombre_color):
+        """
+        Obtiene un objeto ColorFondo a partir de su nombre.
+        
+        Args:
+            nombre_color: Nombre del color
+            
+        Returns:
+            ColorFondo: Objeto color correspondiente o color por defecto
+        """
+        todos_colores = ColoresFondoDisponibles.obtenerTodos()
+        for color in todos_colores:
+            if color.nombre == nombre_color:
+                return color
+        # Si no se encuentra, devolver color por defecto
+        return ColoresFondoDisponibles.ROJO_MUY_OSCURO_3
     
     def cambiarVolumenSpotify(self, volumen):
         #Callback que se ejecuta cuando el slider cambia
         self.spotify.cambiarVolumen(volumen)
+        # Guardar volumen en preferencias
+        self.gestor_preferencias.actualizar_volumen(volumen)
     
     def actualizarPosiciones(self):
         #Actualiza las posiciones de los componentes según el tamaño de la ventana
@@ -143,6 +194,8 @@ class PantallaPersonalizacion:
             if temaSeleccionado:
                 self.temaActual = temaSeleccionado
                 print(f"Tema seleccionado: {temaSeleccionado.nombre}")
+                # Guardar tema en preferencias
+                self.gestor_preferencias.actualizar_tema(temaSeleccionado.nombre)
             
             # Manejar slider
             self.sliderVolumen.manejarEvento(evento)
@@ -159,6 +212,9 @@ class PantallaPersonalizacion:
         if nuevoColor:
             self.colorFondoPersonalizado = nuevoColor
             self.actualizarPosiciones()
+            # Guardar color en preferencias
+            self.gestor_preferencias.actualizar_color_fondo(nuevoColor.nombre)
+            print(f"Color guardado en preferencias: {nuevoColor.nombre}")
 
     def abrirPantallaMusica(self):
         #Abre la pantalla de selección de música
