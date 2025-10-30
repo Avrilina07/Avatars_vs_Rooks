@@ -1,4 +1,9 @@
 {
+<<<<<<< Updated upstream
   "username": "bebe2",
   "selectedLanguage": "🇪🇸 Español"
+=======
+  "selectedLanguage": "🇪🇸 Español",
+  "passwordEntered": true
+>>>>>>> Stashed changes
 }
