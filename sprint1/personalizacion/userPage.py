@@ -586,21 +586,9 @@ class userProfilePage:
                                 font=("Arial", 10),
                                 cursor="hand2", relief=tk.SOLID,
                                 borderwidth=1, padx=20, pady=8)
+
         btnSiguiente.pack(side=tk.LEFT, padx=5)
         
-        # link debajo del campo de contraseña para recuperar (igual que en login)
-        try:
-            link_recover = tk.Label(contentFrame, text='¿Olvidaste tu contraseña?', fg='blue', bg='white', cursor='hand2', font=('Arial', 9, 'underline'))
-            link_recover.pack(pady=(8, 0))
-            link_recover.bind('<Button-1>', lambda e: self.openRecoveryOptions())
-        except Exception:
-            pass
-
-        btnRecovery = tk.Button(buttonFrame, text="Recuperar contraseña", command=lambda: self.openRecoveryOptions(),
-                                bg="white", fg="black", font=("Arial", 10), cursor="hand2", relief=tk.SOLID,
-                                borderwidth=1, padx=12, pady=8)
-        btnRecovery.pack(side=tk.LEFT, padx=5)
-
         btnCancelar = tk.Button(buttonFrame, text="Cancelar",
                                command=dialog.destroy,
                                bg="white", fg="black",
