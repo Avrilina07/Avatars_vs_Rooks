@@ -228,6 +228,13 @@ class PantallaPersonalizacion:
                 name = (u.get('usuario') or u.get('username') or '')
                 if name and name.lower() == usuario.lower():
                     u['personalizado'] = True
+                    # Persistir el color de fondo seleccionado para que otras pantallas (ej. perfil Tkinter)
+                    # puedan leerlo. Guardamos tanto el nombre como el RGB.
+                    try:
+                        u['colorFondo'] = list(self.colorFondoPersonalizado.rgb)
+                        u['colorFondo_nombre'] = getattr(self.colorFondoPersonalizado, 'nombre', None)
+                    except Exception:
+                        pass
                     changed = True
                     break
 
@@ -241,6 +248,11 @@ class PantallaPersonalizacion:
                         if name:
                             usuario = name
                             candidate['personalizado'] = True
+                            try:
+                                candidate['colorFondo'] = list(self.colorFondoPersonalizado.rgb)
+                                candidate['colorFondo_nombre'] = getattr(self.colorFondoPersonalizado, 'nombre', None)
+                            except Exception:
+                                pass
                             changed = True
                             print(f"DEBUG: sesión faltante; único usuario en usuarios.json asumido: {usuario}")
                     else:
