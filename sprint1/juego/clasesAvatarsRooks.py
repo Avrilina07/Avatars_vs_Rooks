@@ -1,4 +1,3 @@
-
 # ---CLASES CON PARÁMETROS BÁSICOS DE LOS AVATARS Y LAS TORRES---
 
 import random
