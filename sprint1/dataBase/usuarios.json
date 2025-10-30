@@ -130,5 +130,72 @@
         "personalizado": false,
         "fechaRegistro": "30/10/2025 09:27:40",
         "mmaa": "gAAAAABpA4PskQuCzf5tMZfnaLRv9cDLSaZ4AfiPI2RcLR4nsKqXUuo3W96p-WtEWLudJmaE7ks7sXbbJG8hxH3tXjFzr5gdaA=="
+    },
+    {
+        "nombre": "luis",
+        "apellidos": "adriano",
+        "usuario": "luis1",
+        "email": "gAAAAABpA8ugkwHGXiLNKMZdTmJkpgKZgonpREAdfgo9kHDKmcLuZxufY02yQB1_DPDSvirzus9YyL2qNTUiNJ3_cMg2ajqrna9RxH7wFgAYv4vaYIDQRkI=",
+        "contrasenaHash": "$2b$12$VMV5ydfAIM6nC9ZPuA98gu7Rim3IaQjpPQr4IEMlyVzLdXTW7mCS6",
+        "fechaNacimiento": "26/10/2012",
+        "telefono": "gAAAAABpA8uh8U9d_J5yBizEM5lONZJ7hYdo365IctV4DxPS1irSKnKjZ46owQd2B382iBCJYXMglSZd6SwIOQVGBhkNwW1bLMESWkgHa70KE6EtkgldY0I=",
+        "preguntaSeguridad": "¿Cuál es su profe favorito del TEC?",
+        "respuestaSeguridad": "gAAAAABpA8uhOx1gG_9Z6zOL-lReDPA8ycHOCu4nUsRpmY9JSAjGA4H-IfGALxvJ545mipwwhN5NzdS7n_E7jwpRBKLQdtyk0Q==",
+        "personalizado": true,
+        "fechaRegistro": "30/10/2025 14:33:37",
+        "mmaa": "gAAAAABpA8uhVBd7emQGHYyrd0Gc2Vn92Iyw-9u8JSJ_ADAO_u5Twb4Ij7mANaN_8Z8GrWo4m9EC3hkCOKFu7gjk3Cq-luhKgg==",
+        "contrasena_hash": "$2b$12$VMV5ydfAIM6nC9ZPuA98gu7Rim3IaQjpPQr4IEMlyVzLdXTW7mCS6",
+        "colorFondo": [
+            224,
+            221,
+            175
+        ],
+        "colorFondo_nombre": "Crema Claro"
+    },
+    {
+        "nombre": "felipe",
+        "apellidos": "ariel",
+        "usuario": "feli1",
+        "email": "gAAAAABpA8yn7G519Ewf-oRA3FXEUDuJ83ktkNpbvVEyG6MvztgjBjECsa-r5WEbuYj4lv0kgZHsTMWAmFkkBvY2cjeHIaxKFg==",
+        "contrasenaHash": "$2b$12$82l84mf1exFh/EDqSVinj.Ri0nyF/txHiui.pSMSJmwQkaOr4EmQm",
+        "fechaNacimiento": "16/10/2014",
+        "telefono": "gAAAAABpA8ynuIjJMgg_fmg4L22p4iuIItEXC5vNhEtyRAmbwOmLlZRg3tg-shhR20yIFiU0Cv1wddfijwfLRFdKnOYoEMn5cSq7ZbcCV6UAe9AG2BE-oj4=",
+        "preguntaSeguridad": "¿Cuál es su profe favorito del TEC?",
+        "respuestaSeguridad": "gAAAAABpA8yn_u_7UUNZCrFY3S1q1f9AhtqghQIYtdBsmHzYKK4PV2zwnsyxaB3cDOS0JRVWsF4-AcwHdkHEnRo3WWUajl6EPg==",
+        "personalizado": true,
+        "fechaRegistro": "30/10/2025 14:37:59",
+        "mmaa": "gAAAAABpA8yny_nMzlttN5rFdqm8o1buLETJ4xj65n62c6voDS85Nkg2qcKbdRoEP4jvqRWXnCCLz1WVQE7MEp31I3gQAmgiZw==",
+        "colorFondo": [
+            255,
+            255,
+            173
+        ],
+        "colorFondo_nombre": "Amarillo Muy Claro"
+    },
+    {
+        "nombre": "ernesto",
+        "apellidos": "azofeifa",
+        "usuario": "bebe2",
+        "email": "gAAAAABpA9GbWQRoNqWpsq8VOwIda7nvXsjesEj5bsg9dd5HrSwbPeq21Id2OksNpyizpx_c8cACrNTP-MIMn0ve5FSNvsYzCA==",
+        "contrasenaHash": "$2b$12$ZwyakNGmvql3veaO/bbWkeJ78kN.OTEQO7dhsGor.oPK2I6PU9oAG",
+        "fechaNacimiento": "30/10/2014",
+        "telefono": "gAAAAABpA9GbyRXOQl1hqAQQH_6sub25sApvdjxljAiiQ1hysnK5zxWdeyW7FqVm4RSc8UozfphOLqKAaAANPOTPAGEsvGTNI5zGs07S-Bmga-kOIEfxov0=",
+        "preguntaSeguridad": "¿Cuál es el mejor equipo de futbol?",
+        "respuestaSeguridad": "gAAAAABpA9GbCdQCL5JCxNDC9usxTd77ZiEaLnBw244x1VGxyf5L7LVrzFLNvqOEFWepj-bNfJBSoo0uMTV9g1knY4y6ah8VJEbJk-lFINwunGBYplj6_a0=",
+        "personalizado": true,
+        "fechaRegistro": "30/10/2025 14:59:07",
+        "mmaa": "gAAAAABpA9GbMy8cyEMparLlo5JGjBSFu1W_7EcI20ClA-eN8n8WTpsKFAS6tGTjRp9ItR8bkV74PnhZoT2AelQ9sLlNWZcr4Q==",
+        "colorFondo": [
+            224,
+            181,
+            186
+        ],
+        "colorFondo_nombre": "Rosa Muy Pálido",
+        "tarjetaCredito": "",
+        "cvv": "",
+        "fechaCaducidad": "",
+        "tieneFotoRegistrada": true,
+        "rutaFoto": "dataBase\\imagenes\\bebe2.png",
+        "foto": "dataBase\\imagenes\\bebe2.png"
     }
 ]
