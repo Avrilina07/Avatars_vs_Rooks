@@ -71,7 +71,9 @@ class SpotifyAPI:
         nombre = track["name"]
         artista = track["artists"][0]["name"]
         uri = track["uri"]
-        return nombre, artista, uri
+        tempo = track["tempo"]
+        popularidad = track["popularidad"]
+        return nombre, artista, uri, tempo, popularidad
     
     def cambiarVolumen(self, volumen):
         """

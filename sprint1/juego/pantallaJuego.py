@@ -6,6 +6,8 @@ import pygame
 import sys
 import os
 
+"importar monedas desde coin"
+from coins import Coin, generarMonedas, actualizarJuego
 # Importar desde personalizacion
 carpeta_actual = os.path.dirname(os.path.abspath(__file__))
 carpeta_padre = os.path.dirname(carpeta_actual)
@@ -78,6 +80,22 @@ class PantallaJuego:
         # === FUENTES ===
         self.fuenteTitulo = pygame.font.SysFont('Arial', 65, bold=True)
         self.fuenteTorre = pygame.font.SysFont('Arial', 32, bold=True)
+        self.fuenteInfo = pygame.font.SysFont('Arial', 28) 
+
+        # === LÓGICA DE JUEGO ===
+        self.rooks = Rooks()
+        self.avatars = Avatars()
+        self.datosTorres = { 
+            "T1": self.rooks.torreArena, "T2": self.rooks.torreRoca,
+            "T3": self.rooks.torreFuego, "T4": self.rooks.torreAgua
+        }
+        self.dinero = 350
+        self.monedas = []
+        self.puntosParaMonedas = 0  # Acumulador de puntos
+        self.umbralMonedas = 100     # Cuando llegue a 100, generar monedas
+        self.gestorAvatars = None
+        self.gestorTorres = None
+        self.juegoIniciado = False
         
         # === BOTONES DE TORRES ===
         self.botonesTorres = self.crearBotonesTorres()
@@ -148,9 +166,72 @@ class PantallaJuego:
         boton.colorTexto = self.colorFondo.obtenerColorTextoBoton()
 
         return boton
+    
+    # Crea el boton para ir al Hall of Fame
+    def crearBotonHallOfFame(self):
+        """Crea el botón HALL OF FAME"""
+        boton = Boton(
+            self.ancho // 2, self.alto // 2 + 200, 400, 80, "HALL OF FAME", 32
+        )
 
+        boton.colorNormal = self.colorFondo.obtenerColorBoton()
+        boton.colorHover = self.colorFondo.obtenerColorHoverBoton()
+        boton.colorBorde = self.colorFondo.obtenerColorBorde()
+        boton.colorTexto = self.colorFondo.obtenerColorTextoBoton()
+
+        return boton
+
+    # === MÉTODOS DE LÓGICA DE JUEGO ===
+    
+    def reiniciarJuego(self):
+        """Reinicia el juego volviendo al estado de CONFIGURACION."""
+        
+        # 1. Resetear variables de juego
+        self.matriz = [[None for _ in range(self.columnas)] for _ in range(self.filas)]
+        self.torreSeleccionada = None
+        self.dinero = 350
+        self.gestorAvatars = None
+        self.gestorTorres = None
+        self.juegoIniciado = False
+        
+        # 2. Resetear estados
+        self.estadoJuego = "CONFIGURACION"
+        self.monedas = []
+        self.puntosParaMonedas = 0
+        print("🔄 Juego reiniciado. Volviendo a la fase de configuración.")
 
     
+    def actualizarJuego(self):
+        """Actualiza la lógica del juego cada frame"""
+        if self.estadoJuego != "JUGANDO":
+            return
+        
+        self.gestorAvatars.actualizar(self.gestorTorres.torres)
+        self.gestorTorres.actualizar(self.gestorAvatars.avatarsActivos, FPS)
+        # Obtener puntos ganados este frame
+        puntosFrame = self.gestorAvatars.obtenerYResetearPuntos()
+        self.puntosParaMonedas += puntosFrame
+        # Generar monedas cuando se alcance el umbral
+        if self.puntosParaMonedas >= self.umbralMonedas:
+            self.puntosParaMonedas -= self.umbralMonedas
+            self.monedas = generarMonedas()
+            print(f"💰 ¡Monedas generadas! ({len(self.monedas)} monedas)")
+        statsAvatars = self.gestorAvatars.obtenerEstadisticas()
+        if self.puntosParaMonedas >= self.umbralMonedas:
+            self.puntosParaMonedas -= self.umbralMonedas  # Resetear o mantener excedente
+            self.monedas = generarMonedas()
+            print("💰 ¡Monedas generadas!")
+        
+        stats = self.gestorAvatars.obtenerEstadisticas()
+        
+        if stats["perdio"]:
+            print(f"💀 ¡PERDISTE! {stats['resultado']}")
+            self.estadoJuego = "PERDIDO"
+            
+        if stats["gano"]:
+            print(f"🎉 ¡GANASTE! {stats['resultado']}")
+            self.ejecutando = False
+            
     def obtenerCasillaClick(self, mouseX, mouseY):
         """
         Convierte coordenadas del mouse a posición en la matriz
@@ -250,6 +331,57 @@ class PantallaJuego:
                 for boton in self.botonesTorres:
                     boton.manejarEvento(evento)
                 self.botonIniciar.manejarEvento(evento)  # Hover para Iniciar Juego
+                # Click en botón de Usuario
+                if esta_sobre_usuario:
+                    print("Click en el boton de Usuario")
+
+                # Lógica del estado PERDIDO (prioridad alta)
+                if self.estadoJuego == "PERDIDO":
+                    if self.botonReiniciar.manejarEvento(evento):
+                        self.reiniciarJuego()
+                        continue
+
+                # Lógica de SELECCIÓN de torres (en CONFIGURACION y JUGANDO)
+                if self.estadoJuego in ("CONFIGURACION", "JUGANDO"):
+                    for boton in self.botonesTorres:
+                        if boton.manejarEvento(evento):
+                            self.torreSeleccionada = boton.id_torre
+                            print(f"Torre seleccionada: {self.torreSeleccionada}")
+                            continue
+
+                # Lógica de INICIAR JUEGO (solo en CONFIGURACION)
+                if self.estadoJuego == "CONFIGURACION":
+                    if self.botonIniciar.manejarEvento(evento):
+                        self.iniciarJuego()
+                        continue
+
+                # Lógica de click en el tablero (Colocar/Quitar)
+                if self.estadoJuego in ("CONFIGURACION", "JUGANDO"):
+                    casilla = self.obtenerCasillaClick(mouseX, mouseY)
+                    if casilla:
+                        fila, columna = casilla
+                        
+                        if evento.button == 1:  # Click izquierdo: Colocar
+                            self.colocarTorre(fila, columna)
+                        elif evento.button == 3:  # Click derecho: Quitar
+                            self.quitarTorre(fila, columna)
+                # Lógica de click en monedas (solo en JUGANDO)
+                if self.estadoJuego == "JUGANDO" and evento.button == 1:
+                    puntosGanados = 0
+                    tamañoCelda = self.anchoCasilla + self.gridAnchoExtra
+                    offsetX = self.tableroX + self.gridOffsetX
+                    offsetY = self.tableroY + self.gridOffsetY
+    
+                    for moneda in self.monedas:
+                        if moneda.verificarClick((mouseX, mouseY), tamañoCelda, offsetX, offsetY):
+                            puntosGanados += moneda.valor
+                            print(f"💰 ¡Moneda de {moneda.valor} recogida!")
+                    if puntosGanados > 0:
+                        self.dinero += puntosGanados
+                        # Eliminar monedas clickeadas
+                        self.monedas = [m for m in self.monedas if not m.clickeada]
+
+    # === MÉTODOS DE DIBUJO ===
     
     def dibujar(self):
         """Dibuja todos los elementos en pantalla"""
@@ -385,6 +517,69 @@ class PantallaJuego:
                     textoRect = textoTorre.get_rect(center=(centroX, centroY))
                     self.pantalla.blit(textoTorre, textoRect)
     
+        # 1. Fondo, overlay, título
+        self.pantalla.fill(self.colorFondo.rgb)
+        overlay = pygame.Surface((self.ancho, self.alto))
+        overlay.set_alpha(self.temaActual.opacidad)
+        overlay.fill((0, 0, 0))
+        self.pantalla.blit(overlay, (0, 0))
+        
+        colorTexto = self.colorFondo.obtenerColorTitulo()
+        titulo = self.fuenteTitulo.render("Avatars VS Rooks", True, colorTexto)
+        tituloRect = titulo.get_rect(center=(self.ancho -350, 100)) 
+        self.pantalla.blit(titulo, tituloRect)
+
+        # 2. Tablero, grid
+        if self.imagenTablero:
+            self.pantalla.blit(self.imagenTablero, (self.tableroX, self.tableroY))
+        self.dibujarGridDebug()
+        
+        # 3. Dibujo de Torres/Avatars
+        if self.estadoJuego == "CONFIGURACION":
+            self.dibujarTorresMatriz() 
+        elif self.estadoJuego in ("JUGANDO", "PERDIDO"):
+            if self.gestorTorres:
+                self.gestorTorres.dibujar(self.pantalla)
+            if self.gestorAvatars:
+                self.gestorAvatars.dibujar(self.pantalla)
+                
+        # 4. Dibujar monedas (solo cuando está JUGANDO)
+        if self.estadoJuego == "JUGANDO":
+            tamañoCelda = self.anchoCasilla + self.gridAnchoExtra
+            offsetX = self.tableroX + self.gridOffsetX
+            offsetY = self.tableroY + self.gridOffsetY
+            for moneda in self.monedas:
+                moneda.dibujar(self.pantalla, tamañoCelda, offsetX, offsetY)
+
+
+        # 5. Botones rectangulares (Se dibujan en CONFIGURACION Y JUGANDO)
+        if self.estadoJuego in ("CONFIGURACION", "JUGANDO"):
+            for boton in self.botonesTorres:
+                boton.dibujar(self.pantalla)
+                if hasattr(boton, 'id_torre') and boton.id_torre == self.torreSeleccionada:
+                    pygame.draw.rect(self.pantalla, (255, 215, 0), boton.rect, 5) 
+            
+        # Botón INICIAR solo en CONFIGURACION
+        if self.estadoJuego == "CONFIGURACION":
+            self.botonIniciar.dibujar(self.pantalla) 
+        
+        # 6. Dinero y Estadísticas 
+        if self.estadoJuego != "PERDIDO":
+            self.dibujarDinero()
+            if self.estadoJuego == "JUGANDO":
+                self.dibujarEstadisticas()
+        
+        # 7. DIBUJO DEL BOTÓN "USUARIO"
+        self.dibujarBotonUsuario()
+
+        # 8. PANTALLA DE DERROTA
+        if self.estadoJuego == "PERDIDO":
+            self.dibujarPantallaDerrota()
+        
+        # Actualizar pantalla
+        pygame.display.flip()
+        
+    # === LOOP PRINCIPAL ===
     def ejecutar(self):
         """
         Loop principal de la pantalla
@@ -398,11 +593,3 @@ class PantallaJuego:
             self.reloj.tick(FPS)
         
         return self.volver
-
-
-# ============================================================================
-# Para testing directo (opcional)
-# ============================================================================
-if __name__ == "__main__":
-    print("⚠️ Este archivo debe ser importado desde otra pantalla")
-    print("Para probar, usa el archivo test.py")
