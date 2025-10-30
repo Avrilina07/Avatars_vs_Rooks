@@ -10,5 +10,11 @@
         "tema": "Intermedio",
         "volumen": 50,
         "ultima_cancion": null
+    },
+    "juanito1": {
+        "color_fondo": "Verde Lima",
+        "tema": "Claro (Predeterminado)",
+        "volumen": 90,
+        "ultima_cancion": "spotify:track:5dtzqRtiXKftAk6B6vxUmr"
     }
 }

@@ -102,5 +102,19 @@
         "personalizado": false,
         "fechaRegistro": "30/10/2025 08:17:46",
         "mmaa": "gAAAAABpA3OKY11CXOlA1Ih4yaB_a5tIqjIV6MpLQKqZaBpHzZChEZZ6G8mdtL5gfdTodcyNBLOx3vtv2LEykHxazehNQrC95Q=="
+    },
+    {
+        "nombre": "juanito",
+        "apellidos": "aguilar",
+        "usuario": "juanito1",
+        "email": "gAAAAABpA3ruMceQI3wA42nfTJN3U6y-dha8NaEl0-UGJdDtjkdtYSG_SIkBw9uW_GsFqGbIO-QdRo7yEFSmNkHGWPZqkic7XQ==",
+        "contrasenaHash": "$2b$12$71m3ClGw4RrnwDelE3LuHe8/aJJnle69IKjVDA1VtuFoZZES4UECC",
+        "fechaNacimiento": "27/10/2006",
+        "telefono": "gAAAAABpA3rvEaLOwIsOlVp_ehdQg4IDiBV3aAq5SPj5VSBvhbzSAQk-Ia6A-7wZwtNzYkbl8ShSW3A_SH9RnPrGVPJJhELvyfCZnFmYe-j3vO-GoL-NmdI=",
+        "preguntaSeguridad": "¿Cuál es el mejor equipo de futbol?",
+        "respuestaSeguridad": "gAAAAABpA3rvYcCAGMbElHZXYeIftEXee6d5i73_kqQNLOlPD_Q1kNkAlfNsGQAvjywJkxkdcxG1MvQACmMU39jPiwNaaPEGpNs9Sq9JtsOs__anIV4W0Dk=",
+        "personalizado": false,
+        "fechaRegistro": "30/10/2025 08:49:19",
+        "mmaa": "gAAAAABpA3rvyNS9kNNdbDI4mJ9f_qcHAfF5Bo-s3_hs-rqsrWP_VCpfVEPGravcga0jXOL760GyoJTEGVG30KAmBxzCKO767A=="
     }
 ]
