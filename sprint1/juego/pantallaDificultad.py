@@ -21,7 +21,7 @@ from pantallaJuego import PantallaJuego
 class PantallaDificultad:
     """Pantalla de selección de dificultad con 4 opciones"""
     
-    def __init__(self, pantalla, colorFondo, temaActual):
+    def __init__(self, pantalla, colorFondo, temaActual, spotify=None):
         """
         Inicializa la pantalla de dificultad
         
@@ -29,6 +29,7 @@ class PantallaDificultad:
             pantalla: Surface de pygame
             colorFondo: Objeto ColorFondo con configuración de colores
             temaActual: Objeto Tema con opacidad
+            spotify: Objeto SpotifyAPI para controlar la música (opcional)
         """
         self.pantalla = pantalla
         self.reloj = pygame.time.Clock()
@@ -39,6 +40,9 @@ class PantallaDificultad:
         # Configuración de colores y tema
         self.colorFondo = colorFondo
         self.temaActual = temaActual
+        
+        # Control de música
+        self.spotify = spotify
         
         # Dimensiones de pantalla
         self.ancho, self.alto = self.pantalla.get_size()
@@ -118,6 +122,13 @@ class PantallaDificultad:
             if evento.type == pygame.QUIT:
                 self.ejecutando = False
                 self.volver = False
+                # Pausar música al cerrar
+                if self.spotify:
+                    try:
+                        print("DEBUG: Pausando música al cerrar (QUIT en dificultad)")
+                        self.spotify.pausarMusica()
+                    except Exception as e:
+                        print(f"Error al pausar música: {e}")
                 return 'QUIT'
             
             elif evento.type == pygame.KEYDOWN:
@@ -125,6 +136,13 @@ class PantallaDificultad:
                     # ESC cierra el juego completamente, no vuelve a personalización
                     self.ejecutando = False
                     self.volver = False
+                    # Pausar música al presionar ESC
+                    if self.spotify:
+                        try:
+                            print("DEBUG: Pausando música al salir con ESC (dificultad)")
+                            self.spotify.pausarMusica()
+                        except Exception as e:
+                            print(f"Error al pausar música: {e}")
                     return 'QUIT'
             
             # Botón volver deshabilitado - no se puede volver a personalización
@@ -137,9 +155,16 @@ class PantallaDificultad:
                         # El botón SALIR ahora cierra el juego completamente
                         self.ejecutando = False
                         self.volver = False
+                        # Pausar música al presionar SALIR
+                        if self.spotify:
+                            try:
+                                print("DEBUG: Pausando música al presionar SALIR")
+                                self.spotify.pausarMusica()
+                            except Exception as e:
+                                print(f"Error al pausar música: {e}")
                         return 'QUIT'
                     else:
-                        # Seleccionar dificultad e iniciar juego
+                        # Seleccionar dificultad e iniciar juego (NO pausar música aquí)
                         self.dificultadSeleccionada = boton.nombre
                         self.iniciarJuego = True
                         self.ejecutando = False
@@ -184,7 +209,7 @@ class PantallaDificultad:
                 self.pantalla.blit(desc, descRect)
         
         # 7. Información adicional en la parte inferior
-        info = self.fuenteDescripcion.render("Presiona ESC para salir", True, colorTexto)
+        info = self.fuenteDescripcion.render("Presiona ESC para salir del juego", True, colorTexto)
         infoRect = info.get_rect(center=(self.ancho // 2, self.alto - 30))
         self.pantalla.blit(info, infoRect)
         
@@ -231,10 +256,15 @@ def main():
     
     print(f"DEBUG: Preferencias cargadas: {preferencias}")
     
+    # ============================================================================
+    # AQUÍ ES DONDE SE REPRODUCE LA MÚSICA DEL USUARIO (después del login exitoso)
+    # Las preferencias de personalización guardadas se aplican en esta pantalla
+    # ============================================================================
+    
     # Inicializar Spotify
     spotify = SpotifyAPI()
     
-    # Reproducir la última canción guardada si existe
+    # Reproducir la última canción guardada si existe (preferencias de usuario)
     ultima_cancion = preferencias.get("ultima_cancion", None)
     if ultima_cancion:
         print(f"DEBUG: Reproduciendo última canción guardada: {ultima_cancion}")
@@ -243,7 +273,7 @@ def main():
         else:
             print("No se pudo reproducir la canción")
     
-    # Aplicar volumen guardado
+    # Aplicar volumen guardado (preferencias de usuario)
     volumen = preferencias.get("volumen", 50)
     spotify.cambiarVolumen(volumen)
     print(f"DEBUG: Volumen aplicado: {volumen}")
@@ -280,16 +310,17 @@ def main():
     
     try:
         # Crear y ejecutar pantalla de dificultad con las preferencias cargadas
-        pantalla_dif = PantallaDificultad(pantalla, colorFondo, temaActual)
+        # Pasar el objeto spotify para que pueda pausar la música al salir
+        pantalla_dif = PantallaDificultad(pantalla, colorFondo, temaActual, spotify)
         accion, dificultad = pantalla_dif.ejecutar()
         
         # Manejar resultado
         if accion == 'JUGAR':
             print(f"Iniciando juego con dificultad: {dificultad}")
             
-            # Lanzar el juego con la dificultad seleccionada
+            # Lanzar el juego con la dificultad seleccionada, pasando el objeto spotify
             try:
-                pantallaJuego = PantallaJuego(pantalla, colorFondo, temaActual, dificultad)
+                pantallaJuego = PantallaJuego(pantalla, colorFondo, temaActual, dificultad, spotify)
                 pantallaJuego.ejecutar()
             except Exception as e:
                 print(f"Error al iniciar el juego: {e}")
