@@ -1,5 +1,3 @@
-# pantallaJuego.py
-
 import pygame
 import sys
 import os
@@ -75,6 +73,12 @@ class PantallaJuego:
         self.matriz = [[None for _ in range(self.columnas)] for _ in range(self.filas)]
         self.torreSeleccionada = None
 
+        # === CARGA DE IMÁGENES DEL JUEGO ===
+        self.imagenes_torres = {}
+        self.imagenes_avatars = {}
+        self.imagenes_proyectiles = {}
+        self.cargarImagenesJuego()
+
         # === FUENTES ===
         self.fuenteTitulo = pygame.font.SysFont('Arial', 65, bold=True)
         self.fuenteTorre = pygame.font.SysFont('Arial', 32, bold=True)
@@ -89,14 +93,13 @@ class PantallaJuego:
         }
         self.dinero = 350
         self.monedas = []
-        self.puntosParaMonedas = 0  # Acumulador de puntos
-        self.umbralMonedas = 100     # Cuando llegue a 100, generar monedas
+        self.puntosParaMonedas = 0  
+        self.umbralMonedas = 100     
         self.gestorAvatars = None
         self.gestorTorres = None
         self.juegoIniciado = False
         
         # === ESTADOS Y BOTONES DE DERROTA ===
-        # Estados: "CONFIGURACION", "JUGANDO", "PERDIDO"
         self.estadoJuego = "CONFIGURACION" 
         self.botonReiniciar = self.crearBotonReiniciar()
         
@@ -130,6 +133,39 @@ class PantallaJuego:
         except Exception as e:
             print(f"Error cargando imagen del tablero: {e}")
             return None
+
+    def cargarImagenesJuego(self):
+        """Carga todas las imágenes de avatars, torres y proyectiles"""
+        try:
+            ruta_base = os.path.join(carpeta_actual, 'imagenes')
+
+            # --- AVATARS ---
+            nombres_avatars = ["Arco_1", "Arco_2", "hacha_1", "hacha_2", 
+                               "bate_1", "bate_2", "escudo_1", "escudo_2"]
+            for nombre in nombres_avatars:
+                clave = f"Avatar_{nombre}"
+                ruta = os.path.join(ruta_base, f"{clave}.png")
+                self.imagenes_avatars[clave] = pygame.image.load(ruta).convert_alpha()
+
+            # --- TORRES ---
+            nombres_torres = ["Torre_arena", "Torre_roca", "Torre_fuego", "Torre_agua"]
+            for nombre in nombres_torres:
+                ruta = os.path.join(ruta_base, f"{nombre}.png")
+                self.imagenes_torres[nombre] = pygame.image.load(ruta).convert_alpha()
+
+            # --- PROYECTILES ---
+            mapa_proyectiles = {
+                "T1": "Ataque_arena", "T2": "Ataque_roca",
+                "T3": "Ataque_fuego", "T4": "Ataque_agua"
+            }
+            for tipo_torre, nombre_archivo in mapa_proyectiles.items():
+                ruta = os.path.join(ruta_base, f"{nombre_archivo}.png")
+                self.imagenes_proyectiles[tipo_torre] = pygame.image.load(ruta).convert_alpha()
+
+            print("🖼️ Todas las imágenes de juego cargadas correctamente.")
+            
+        except Exception as e:
+            print(f"❌ Error crítico cargando una imagen: {e}. Asegúrate de que todas están en la carpeta 'imagenes'.")
 
 
     # === MÉTODOS DE CREACIÓN DE BOTONES ===
@@ -211,7 +247,7 @@ class PantallaJuego:
         # 1. Resetear variables de juego
         self.matriz = [[None for _ in range(self.columnas)] for _ in range(self.filas)]
         self.torreSeleccionada = None
-        self.dinero = 500
+        self.dinero = 350
         self.gestorAvatars = None
         self.gestorTorres = None
         self.juegoIniciado = False
@@ -233,8 +269,20 @@ class PantallaJuego:
             "altoCasilla": self.altoCasilla + self.gridAltoExtra
         }
         
-        self.gestorTorres = GestorTorres(self.matriz, self.datosTorres, gridConfig)
-        self.gestorAvatars = GestorAvatars(gridConfig, self.dificultad, FPS)
+        # PASAR IMÁGENES AL GESTOR DE TORRES
+        self.gestorTorres = GestorTorres(
+            self.matriz, self.datosTorres, gridConfig, 
+            torre_imagenes=self.imagenes_torres,
+            proyectil_imagenes=self.imagenes_proyectiles
+        )
+        
+        # PASAR IMÁGENES AL GESTOR DE AVATARS
+        self.gestorAvatars = GestorAvatars(
+            gridConfig, self.dificultad, FPS, 
+            avatar_imagenes=self.imagenes_avatars,
+            proyectil_imagenes=self.imagenes_proyectiles 
+        )
+        
         self.gestorAvatars.iniciar()
         
         self.juegoIniciado = True
@@ -473,7 +521,7 @@ class PantallaJuego:
                     offsetX = self.tableroX + self.gridOffsetX
                     offsetY = self.tableroY + self.gridOffsetY
                     
-                    for moneda in self.monedas[:]:  # Usar slice para evitar modificar lista durante iteración
+                    for moneda in self.monedas[:]:  
                         if moneda.verificarClick((mouseX, mouseY), tamañoCelda, offsetX, offsetY):
                             puntosGanados += moneda.valor
                             print(f"💰 ¡Moneda de {moneda.valor} recogida!")
@@ -567,28 +615,41 @@ class PantallaJuego:
         self.pantalla.blit(textoSurface, textoRect)
     
     def dibujarTorresMatriz(self):
-        """Dibuja las torres colocadas antes de iniciar"""
+        """Dibuja las torres colocadas antes de iniciar usando imágenes."""
         gridX = self.tableroX + self.gridOffsetX
         gridY = self.tableroY + self.gridOffsetY
         anchoCasilla = self.anchoCasilla + self.gridAnchoExtra
         altoCasilla = self.altoCasilla + self.gridAltoExtra
         
-        colores = {
-            "T1": (194, 178, 128), "T2": (128, 128, 128), 
-            "T3": (255, 100, 0), "T4": (0, 100, 255)
+        mapa_torres = {
+            "T1": "Torre_arena", "T2": "Torre_roca", 
+            "T3": "Torre_fuego", "T4": "Torre_agua"
         }
         
         for fila in range(self.filas):
             for columna in range(self.columnas):
-                if self.matriz[fila][columna]:
-                    idTorre = self.matriz[fila][columna]
-                    color = colores.get(idTorre, (255, 255, 255))
+                idTorre = self.matriz[fila][columna]
+                
+                if idTorre:
+                    nombre_imagen = mapa_torres.get(idTorre)
                     
-                    x = gridX + columna * anchoCasilla + anchoCasilla / 2
-                    y = gridY + fila * altoCasilla + altoCasilla / 2
-                    
-                    pygame.draw.circle(self.pantalla, color, (int(x), int(y)), 25)
-                    pygame.draw.circle(self.pantalla, (0, 0, 0), (int(x), int(y)), 25, 3)
+                    if nombre_imagen and nombre_imagen in self.imagenes_torres:
+                        imagen = self.imagenes_torres[nombre_imagen]
+                        # Redimensionar para previsualización 
+                        radio_visual = 50 
+                        imagen_escalada = pygame.transform.scale(imagen, (radio_visual, radio_visual))
+
+                        x = gridX + columna * anchoCasilla + anchoCasilla / 2
+                        y = gridY + fila * altoCasilla + altoCasilla / 2
+                        
+                        rect = imagen_escalada.get_rect(center=(int(x), int(y)))
+                        self.pantalla.blit(imagen_escalada, rect)
+                    else:
+                        # Fallback: Dibuja un círculo si la imagen falla
+                        color = (255, 0, 0) 
+                        x = gridX + columna * anchoCasilla + anchoCasilla / 2
+                        y = gridY + fila * altoCasilla + altoCasilla / 2
+                        pygame.draw.circle(self.pantalla, color, (int(x), int(y)), 25)
 
     def dibujarGridDebug(self):
         """Dibuja el grid de debug"""
