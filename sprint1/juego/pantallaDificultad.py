@@ -220,3 +220,82 @@ class PantallaDificultad:
             return ('VOLVER', None)
         else:
             return ('QUIT', None)
+
+
+def main():
+    """
+    Función principal para iniciar la pantalla de dificultad.
+    Carga las preferencias del usuario y aplica los colores guardados.
+    """
+    pygame.init()
+    
+    # Importar módulos necesarios para cargar preferencias
+    sys.path.insert(0, carpeta_personalizacion)
+    from preferencias_usuario import GestorPreferencias
+    from fondo import ColoresFondoDisponibles
+    from temas import ConfiguracionTemas
+    from constantes import PANTALLA_COMPLETA
+    
+    # Cargar preferencias del usuario
+    gestor = GestorPreferencias()
+    preferencias = gestor.cargar_preferencias()
+    
+    print(f"DEBUG: Preferencias cargadas: {preferencias}")
+    
+    # Obtener color de fondo desde preferencias
+    nombre_color = preferencias.get("color_fondo", "Vino Oscuro")
+    todos_colores = ColoresFondoDisponibles.obtenerTodos()
+    colorFondo = None
+    for color in todos_colores:
+        if color.nombre == nombre_color:
+            colorFondo = color
+            break
+    if colorFondo is None:
+        colorFondo = ColoresFondoDisponibles.ROJO_MUY_OSCURO_3
+    
+    # Obtener tema desde preferencias
+    nombre_tema = preferencias.get("tema", "Claro (Predeterminado)")
+    todos_temas = ConfiguracionTemas.obtenerTodos()
+    temaActual = None
+    for tema in todos_temas:
+        if tema.nombre == nombre_tema:
+            temaActual = tema
+            break
+    if temaActual is None:
+        temaActual = ConfiguracionTemas.CLARO
+    
+    # Configurar pantalla
+    if PANTALLA_COMPLETA:
+        pantalla = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+    else:
+        pantalla = pygame.display.set_mode((1000, 700))
+    
+    pygame.display.set_caption("Seleccionar Dificultad - Avatars VS Rooks")
+    
+    # Crear y ejecutar pantalla de dificultad con las preferencias cargadas
+    pantalla_dif = PantallaDificultad(pantalla, colorFondo, temaActual)
+    accion, dificultad = pantalla_dif.ejecutar()
+    
+    # Manejar resultado
+    if accion == 'JUGAR':
+        print(f"Iniciando juego con dificultad: {dificultad}")
+        
+        # Lanzar el juego con la dificultad seleccionada
+        try:
+            pantallaJuego = PantallaJuego(pantalla, colorFondo, temaActual, dificultad)
+            pantallaJuego.ejecutar()
+        except Exception as e:
+            print(f"Error al iniciar el juego: {e}")
+            import traceback
+            traceback.print_exc()
+        
+    elif accion == 'VOLVER':
+        print("Volviendo al menú principal...")
+        # Aquí se podría volver a personalización o cerrar
+    
+    pygame.quit()
+    sys.exit()
+
+
+if __name__ == "__main__":
+    main()
