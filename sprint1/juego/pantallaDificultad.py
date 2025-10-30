@@ -235,12 +235,30 @@ def main():
     from fondo import ColoresFondoDisponibles
     from temas import ConfiguracionTemas
     from constantes import PANTALLA_COMPLETA
+    from spotify_api import SpotifyAPI
     
     # Cargar preferencias del usuario
     gestor = GestorPreferencias()
     preferencias = gestor.cargar_preferencias()
     
     print(f"DEBUG: Preferencias cargadas: {preferencias}")
+    
+    # Inicializar Spotify
+    spotify = SpotifyAPI()
+    
+    # Reproducir la última canción guardada si existe
+    ultima_cancion = preferencias.get("ultima_cancion", None)
+    if ultima_cancion:
+        print(f"DEBUG: Reproduciendo última canción guardada: {ultima_cancion}")
+        if spotify.reproducirCancion(ultima_cancion):
+            print("Canción reproducida exitosamente")
+        else:
+            print("No se pudo reproducir la canción")
+    
+    # Aplicar volumen guardado
+    volumen = preferencias.get("volumen", 50)
+    spotify.cambiarVolumen(volumen)
+    print(f"DEBUG: Volumen aplicado: {volumen}")
     
     # Obtener color de fondo desde preferencias
     nombre_color = preferencias.get("color_fondo", "Vino Oscuro")
@@ -289,9 +307,14 @@ def main():
             import traceback
             traceback.print_exc()
         
+        # Pausar música cuando el juego termine
+        print("DEBUG: Pausando música al cerrar el juego")
+        spotify.pausarMusica()
+        
     elif accion == 'VOLVER':
         print("Volviendo al menú principal...")
-        # Aquí se podría volver a personalización o cerrar
+        # Pausar música si se vuelve al menú
+        spotify.pausarMusica()
     
     pygame.quit()
     sys.exit()
