@@ -3,6 +3,10 @@
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
+# Variables globales para tracking
+tempo = 120  # Valor por defecto (120 BPM)
+popularidad = 50  # Valor por defecto (50/100)
+
 
 class SpotifyAPI:
     #Clase para manejar la API de Spotify
@@ -68,10 +72,37 @@ class SpotifyAPI:
         Returns:
             Tupla (nombre, artista, uri)
         """
-        nombre = track["name"]
-        artista = track["artists"][0]["name"]
-        uri = track["uri"]
-        return nombre, artista, uri
+        try:
+            nombre = track.get("name")
+            artista = track.get("artists", [{}])[0].get("name") if track.get("artists") else None
+            uri = track.get("uri")
+            # Popularity suele venir en el objeto track
+            popularity = track.get("popularity")
+
+            # Obtener audio features para extraer tempo (BPM)
+            global tempo, popularidad
+            
+            track_id = track.get("id")
+            current_tempo = None
+            if track_id:
+                try:
+                    features = self.sp.audio_features([track_id])
+                    if features and isinstance(features, list) and features[0]:
+                        current_tempo = features[0].get("tempo")
+                except Exception:
+                    # No fallar por audio features; dejar tempo como None
+                    current_tempo = None
+            
+            # Actualizar variables globales
+            if current_tempo is not None:
+                tempo = current_tempo
+            if popularity is not None:
+                popularidad = popularity
+
+            return nombre, artista, uri, tempo, popularity
+        except Exception as e:
+            print(f"Error al obtener info de la canción: {e}")
+            return None, None, None, None, None
     
     def cambiarVolumen(self, volumen):
         """
