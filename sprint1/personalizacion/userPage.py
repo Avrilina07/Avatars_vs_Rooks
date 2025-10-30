@@ -250,9 +250,8 @@ class userProfilePage:
         profileFrame = tk.Frame(mainFrame, bg=self.bg_color)
         profileFrame.pack(pady=(0, 10))
         
-        # Crear imagen circular
-        # Intentar cargar foto guardada (rutaFoto / foto) si existe
-        circularImg = None
+        # Crear imagen circular: intentar cargar imagen guardada y componer sobre el color de fondo
+        final_img = None
         try:
             ruta = self.userData.get('rutaFoto') or self.userData.get('foto')
             repo_root = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
@@ -266,11 +265,10 @@ class userProfilePage:
                         ruta = candidate
 
             if ruta:
-                # ruta puede ser relativa (dataBase/imagenes/...) o absoluta
                 abs_path = ruta if os.path.isabs(ruta) else os.path.normpath(os.path.join(repo_root, ruta))
                 if os.path.exists(abs_path):
                     img = Image.open(abs_path).convert('RGBA')
-                    # Ensure square and 100x100
+                    # Crop center square
                     w, h = img.size
                     if w != h:
                         if w > h:
@@ -280,30 +278,46 @@ class userProfilePage:
                             top = (h - w) // 2
                             img = img.crop((0, top, w, top + w))
                     img = img.resize((100, 100), Image.Resampling.LANCZOS)
-                    # Ensure circular mask
+
+                    # Crear máscara circular
                     mask = Image.new('L', (100, 100), 0)
-                    draw = ImageDraw.Draw(mask)
-                    draw.ellipse([0, 0, 100, 100], fill=255)
-                    out = Image.new('RGBA', (100, 100), (255, 255, 255, 0))
-                    out.paste(img, (0, 0), mask=img.split()[-1] if img.mode == 'RGBA' else mask)
-                    out.putalpha(mask)
-                    circularImg = out
+                    mdraw = ImageDraw.Draw(mask)
+                    mdraw.ellipse([0, 0, 100, 100], fill=255)
+
+                    # Determinar color de fondo (bg_color puede ser nombre o hex)
+                    try:
+                        from PIL import ImageColor
+                        bg_rgb = ImageColor.getrgb(self.bg_color) if hasattr(self, 'bg_color') and self.bg_color else (255, 255, 255)
+                    except Exception:
+                        bg_rgb = (255, 255, 255)
+
+                    # Componer imagen sobre fondo del color de la página
+                    canvas = Image.new('RGB', (100, 100), bg_rgb)
+                    canvas.paste(img, (0, 0), mask)
+
+                    final_img = canvas
+
         except Exception:
-            circularImg = None
+            final_img = None
 
-        if circularImg is None:
-            circularImg = self.createCircularImage(100)
+        if final_img is None:
+            # usar placeholder circular (ya RGB)
+            final_img = self.createCircularImage(100)
 
-        # Ensure final image is RGB (no alpha) so Tkinter shows it reliably
+        # Dibujar un borde fino del mismo color del fondo (opcional, aquí queda sutil)
         try:
-            if circularImg.mode in ('RGBA', 'LA'):
-                bg = Image.new('RGB', circularImg.size, (255, 255, 255))
-                bg.paste(circularImg, mask=circularImg.split()[-1])
-                final_img = bg
-            else:
-                final_img = circularImg.convert('RGB')
+            draw = ImageDraw.Draw(final_img)
+            w, h = final_img.size
+            outline_width = max(1, int(min(w, h) * 0.03))
+            # usar bg_color para el contorno (esto hará que se vea integrado)
+            try:
+                from PIL import ImageColor
+                outline_rgb = ImageColor.getrgb(self.bg_color) if hasattr(self, 'bg_color') and self.bg_color else (255, 255, 255)
+            except Exception:
+                outline_rgb = (255, 255, 255)
+            draw.ellipse([outline_width//2, outline_width//2, w - (outline_width//2) - 1, h - (outline_width//2) - 1], outline=outline_rgb, width=outline_width)
         except Exception:
-            final_img = circularImg.convert('RGB')
+            pass
 
         self.profileImage = ImageTk.PhotoImage(final_img)
         
@@ -851,6 +865,21 @@ class userProfilePage:
         # Guardar todos los cambios hechos en userData
         try:
             self.save_user_data()
+            # Cerrar la ventana actual y abrir la pantalla de dificultad
+            try:
+                # destruir ventana Tk
+                try:
+                    self.root.destroy()
+                except Exception:
+                    pass
+
+                # Ejecutar el script de pantalla de dificultad directamente
+                import runpy, os
+                pd_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'juego', 'pantallaDificultad.py'))
+                if os.path.exists(pd_path):
+                    runpy.run_path(pd_path, run_name='__main__')
+            except Exception as e:
+                print(f"No se pudo abrir la pantalla de dificultad: {e}")
         except Exception:
             # ensure feedback even if save fails
             messagebox.showinfo("Guardar", "Los cambios han sido guardados correctamente")
@@ -893,12 +922,29 @@ class userProfilePage:
                 draw = ImageDraw.Draw(mask)
                 draw.ellipse([0, 0, 100, 100], fill=255)
                 
-                # Crear imagen de salida circular
-                output = Image.new('RGB', (100, 100), (255, 255, 255))
-                output.paste(img, (0, 0))
-                output.putalpha(mask)
-                
-                self.profileImage = ImageTk.PhotoImage(output)
+                # Crear imagen de salida circular con fondo del color de página
+                img_rgba = img.convert('RGBA')
+                out = Image.new('RGBA', (100, 100), (0, 0, 0, 0))
+                # usar la máscara para pegar la imagen circular
+                out.paste(img_rgba, (0, 0), mask)
+
+                # Componer sobre fondo del color de la página para evitar borde blanco
+                try:
+                    bg_color = self.bg_color if hasattr(self, 'bg_color') and self.bg_color else '#FFFFFF'
+                except Exception:
+                    bg_color = '#FFFFFF'
+                final_img = Image.new('RGB', (100, 100), bg_color)
+                final_img.paste(out, (0, 0), out.split()[-1])
+
+                # Dibujar borde suave (mismo color que el fondo) para integrarlo
+                try:
+                    draw = ImageDraw.Draw(final_img)
+                    outline_width = max(2, int(min(100, 100) * 0.04))
+                    draw.ellipse([outline_width//2, outline_width//2, 100 - (outline_width//2) - 1, 100 - (outline_width//2) - 1], outline=bg_color, width=outline_width)
+                except Exception:
+                    pass
+
+                self.profileImage = ImageTk.PhotoImage(final_img)
                 
                 # Actualizar la imagen
                 # Asegurarnos de tener username (leer session_user.json si hace falta)
@@ -920,8 +966,12 @@ class userProfilePage:
                     username = self.userData.get('username') or self.userData.get('usuario') or 'user'
                     img_filename = f"{username}.png"
                     img_path = os.path.join(img_dir, img_filename)
-                    # Guardar con canal alpha
-                    output.save(img_path, format='PNG')
+                    # Guardar la imagen final sin alpha sobre fondo del color de la página
+                    try:
+                        final_img.save(img_path, format='PNG')
+                    except Exception:
+                        # fallback a salvar el RGBA si final_img no existe
+                        out.save(img_path, format='PNG')
                     # Guardar ruta relativa en userData
                     rel_path = os.path.join('dataBase', 'imagenes', img_filename)
                     self.userData['rutaFoto'] = rel_path
