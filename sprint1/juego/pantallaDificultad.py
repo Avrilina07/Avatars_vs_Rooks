@@ -12,7 +12,7 @@ carpeta_personalizacion = os.path.join(carpeta_sprint1, 'personalizacion')
 sys.path.insert(0, carpeta_personalizacion)
 
 from constantes import FPS, PANTALLA_COMPLETA
-from componentes import Boton, BotonVolver
+from componentes import Boton
 
 # Importar pantallaJuego desde la misma carpeta
 from pantallaJuego import PantallaJuego
@@ -53,10 +53,6 @@ class PantallaDificultad:
         
         # Crear botones
         self.crearBotones()
-        
-        # Botón volver
-        self.botonVolver = BotonVolver(40, 40)
-        self.actualizarColoresBotonVolver()
     
     def crearBotones(self):
         """Crea los botones de dificultad"""
@@ -89,7 +85,7 @@ class PantallaDificultad:
             },
             {
                 'nombre': 'SALIR',
-                'descripcion': 'Volver al menú',
+                'descripcion': 'Salir del juego',
                 'color_texto': None  # Usará el color por defecto
             }
         ]
@@ -116,13 +112,6 @@ class PantallaDificultad:
             
             self.botones.append(boton)
     
-    def actualizarColoresBotonVolver(self):
-        """Actualiza los colores del botón volver según el tema"""
-        self.botonVolver.colorFondo = self.colorFondo.obtenerColorBoton()
-        self.botonVolver.colorHover = self.colorFondo.obtenerColorHoverBoton()
-        self.botonVolver.colorBorde = self.colorFondo.obtenerColorBorde()
-        self.botonVolver.colorTexto = self.colorFondo.obtenerColorTextoBoton()
-    
     def manejarEventos(self):
         """Procesa los eventos de entrada"""
         for evento in pygame.event.get():
@@ -133,23 +122,22 @@ class PantallaDificultad:
             
             elif evento.type == pygame.KEYDOWN:
                 if evento.key == pygame.K_ESCAPE:
+                    # ESC cierra el juego completamente, no vuelve a personalización
                     self.ejecutando = False
-                    self.volver = True
-                    return 'VOLVER'
+                    self.volver = False
+                    return 'QUIT'
             
-            # Manejar botón volver
-            if self.botonVolver.manejarEvento(evento):
-                self.ejecutando = False
-                self.volver = True
-                return 'VOLVER'
+            # Botón volver deshabilitado - no se puede volver a personalización
+            # El usuario solo puede ir hacia adelante (seleccionar dificultad)
             
             # Manejar botones de dificultad
             for boton in self.botones:
                 if boton.manejarEvento(evento):
                     if boton.nombre == 'SALIR':
+                        # El botón SALIR ahora cierra el juego completamente
                         self.ejecutando = False
-                        self.volver = True
-                        return 'VOLVER'
+                        self.volver = False
+                        return 'QUIT'
                     else:
                         # Seleccionar dificultad e iniciar juego
                         self.dificultadSeleccionada = boton.nombre
@@ -182,8 +170,8 @@ class PantallaDificultad:
         subtituloRect = subtitulo.get_rect(center=(self.ancho // 2, 150))
         self.pantalla.blit(subtitulo, subtituloRect)
         
-        # 5. Botón volver
-        self.botonVolver.dibujar(self.pantalla)
+        # 5. Botón volver NO se muestra (el usuario no puede regresar a personalización)
+        # self.botonVolver.dibujar(self.pantalla)  # COMENTADO
         
         # 6. Botones de dificultad con descripciones
         for boton in self.botones:
@@ -196,7 +184,7 @@ class PantallaDificultad:
                 self.pantalla.blit(desc, descRect)
         
         # 7. Información adicional en la parte inferior
-        info = self.fuenteDescripcion.render("Presiona ESC o el botón Volver para regresar", True, colorTexto)
+        info = self.fuenteDescripcion.render("Presiona ESC para salir", True, colorTexto)
         infoRect = info.get_rect(center=(self.ancho // 2, self.alto - 30))
         self.pantalla.blit(info, infoRect)
         
@@ -290,34 +278,34 @@ def main():
     
     pygame.display.set_caption("Seleccionar Dificultad - Avatars VS Rooks")
     
-    # Crear y ejecutar pantalla de dificultad con las preferencias cargadas
-    pantalla_dif = PantallaDificultad(pantalla, colorFondo, temaActual)
-    accion, dificultad = pantalla_dif.ejecutar()
-    
-    # Manejar resultado
-    if accion == 'JUGAR':
-        print(f"Iniciando juego con dificultad: {dificultad}")
+    try:
+        # Crear y ejecutar pantalla de dificultad con las preferencias cargadas
+        pantalla_dif = PantallaDificultad(pantalla, colorFondo, temaActual)
+        accion, dificultad = pantalla_dif.ejecutar()
         
-        # Lanzar el juego con la dificultad seleccionada
+        # Manejar resultado
+        if accion == 'JUGAR':
+            print(f"Iniciando juego con dificultad: {dificultad}")
+            
+            # Lanzar el juego con la dificultad seleccionada
+            try:
+                pantallaJuego = PantallaJuego(pantalla, colorFondo, temaActual, dificultad)
+                pantallaJuego.ejecutar()
+            except Exception as e:
+                print(f"Error al iniciar el juego: {e}")
+                import traceback
+                traceback.print_exc()
+    
+    finally:
+        # SIEMPRE pausar música al salir, sin importar cómo se cierre
+        print("DEBUG: Pausando música al cerrar la aplicación")
         try:
-            pantallaJuego = PantallaJuego(pantalla, colorFondo, temaActual, dificultad)
-            pantallaJuego.ejecutar()
+            spotify.pausarMusica()
         except Exception as e:
-            print(f"Error al iniciar el juego: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"Error al pausar música: {e}")
         
-        # Pausar música cuando el juego termine
-        print("DEBUG: Pausando música al cerrar el juego")
-        spotify.pausarMusica()
-        
-    elif accion == 'VOLVER':
-        print("Volviendo al menú principal...")
-        # Pausar música si se vuelve al menú
-        spotify.pausarMusica()
-    
-    pygame.quit()
-    sys.exit()
+        pygame.quit()
+        sys.exit()
 
 
 if __name__ == "__main__":
