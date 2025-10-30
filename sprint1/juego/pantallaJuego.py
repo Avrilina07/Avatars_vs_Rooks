@@ -4,6 +4,7 @@ import pygame
 import sys
 import os
 import subprocess
+import runpy
 
 # Configuración para que el módulo encuentre las carpetas necesarias
 carpeta_actual = os.path.dirname(os.path.abspath(__file__))
@@ -18,20 +19,23 @@ carpeta_salon_fama = os.path.join(carpeta_padre, 'salonDeFama')
 sys.path.insert(0, carpeta_salon_fama)
 
 # Importaciones necesarias
-from personalizacion.constantes import FPS
-from personalizacion.componentes import Boton
+from constantes import FPS
+from componentes import Boton
 from clasesAvatarsRooks import Avatars, Rooks
 from logicaAvatarsRooks import GestorAvatars, GestorTorres
 from coins import generarMonedas
 from algoritmoDelBanquero import funcionDelBanquero, guardar_puntaje
-from personalizacion.spotify_api import tempo, popularidad
+from spotify_api import tempo, popularidad
 
 class PantallaJuego:
     """Pantalla de colocación de torres en el tablero 9x5"""
 
-    def __init__(self, pantalla, colorFondo, temaActual, dificultad):
+    def __init__(self, pantalla, colorFondo, temaActual, dificultad, spotify=None):
         """
         Inicializa la pantalla de juego
+        
+        Args:
+            spotify: Objeto SpotifyAPI para controlar la música (opcional)
         """
         self.pantalla = pantalla
         self.reloj = pygame.time.Clock()
@@ -44,6 +48,9 @@ class PantallaJuego:
         
         # Dificultad seleccionada
         self.dificultad = dificultad
+        
+        # Control de música
+        self.spotify = spotify
 
         # Dimensiones de pantalla
         self.ancho, self.alto = self.pantalla.get_size()
@@ -80,7 +87,7 @@ class PantallaJuego:
             "T1": self.rooks.torreArena, "T2": self.rooks.torreRoca,
             "T3": self.rooks.torreFuego, "T4": self.rooks.torreAgua
         }
-        self.dinero = 500
+        self.dinero = 350
         self.monedas = []
         self.puntosParaMonedas = 0  # Acumulador de puntos
         self.umbralMonedas = 100     # Cuando llegue a 100, generar monedas
@@ -328,7 +335,7 @@ class PantallaJuego:
             if self.juegoIniciado and self.gestorTorres:
                 self.gestorTorres.agregarTorre(self.torreSeleccionada, fila, columna)
         else:
-            print(f"Dinero insuficiente (tienes ${self.dinero}, necesitas ${costo})")
+            print(f"Dinero insuficiente (tienes ₡{self.dinero}, necesitas ${costo})")
     
     def quitarTorre(self, fila, columna):
         """Quita una torre y devuelve el dinero"""
@@ -349,6 +356,13 @@ class PantallaJuego:
             if evento.type == pygame.QUIT:
                 self.ejecutando = False
                 self.volver = False
+                # Pausar música antes de cerrar
+                if self.spotify:
+                    try:
+                        print("DEBUG: Pausando música al cerrar el juego (QUIT)")
+                        self.spotify.pausarMusica()
+                    except Exception as e:
+                        print(f"Error al pausar música: {e}")
                 pygame.quit()
                 sys.exit()
             
@@ -356,6 +370,13 @@ class PantallaJuego:
                 if evento.key == pygame.K_ESCAPE:
                     self.ejecutando = False
                     self.volver = True
+                    # Pausar música al presionar ESC
+                    if self.spotify:
+                        try:
+                            print("DEBUG: Pausando música al salir con ESC")
+                            self.spotify.pausarMusica()
+                        except Exception as e:
+                            print(f"Error al pausar música: {e}")
 
             mouseX, mouseY = pygame.mouse.get_pos()
             distancia = ((mouseX - self.usuarioCentroX) ** 2 + 
@@ -382,6 +403,14 @@ class PantallaJuego:
                 if esta_sobre_usuario:
                     print("Abriendo perfil de usuario...")
                     try:
+                        # Pausar música antes de abrir userPage
+                        if self.spotify:
+                            try:
+                                print("DEBUG: Pausando música al abrir perfil de usuario")
+                                self.spotify.pausarMusica()
+                            except Exception as e:
+                                print(f"Error al pausar música: {e}")
+                        
                         # Guardar el estado actual del juego si es necesario
                         pygame.quit()
                         
@@ -477,7 +506,7 @@ class PantallaJuego:
 
     def dibujarDinero(self):
         """Muestra el dinero actual del jugador debajo del botón Iniciar Juego"""
-        texto = f"Dinero: ${self.dinero}"
+        texto = f"Dinero: ₡{self.dinero}"
         color = self.colorFondo.obtenerColorTitulo()
         fuenteDinero = pygame.font.SysFont('Arial', 36, bold=True)
         render = fuenteDinero.render(texto, True, color)

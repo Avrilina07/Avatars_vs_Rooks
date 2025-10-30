@@ -14,7 +14,7 @@
     "juanito1": {
         "color_fondo": "Verde Lima",
         "tema": "Claro (Predeterminado)",
-        "volumen": 90,
+        "volumen": 86,
         "ultima_cancion": "spotify:track:5dtzqRtiXKftAk6B6vxUmr"
     },
     "hola": {
@@ -22,5 +22,23 @@
         "tema": "Intermedio",
         "volumen": 100,
         "ultima_cancion": "spotify:track:7bywjHOc0wSjGGbj04XbVi"
+    },
+    "luis1": {
+        "color_fondo": "Crema Claro",
+        "tema": "Claro (Predeterminado)",
+        "volumen": 50,
+        "ultima_cancion": null
+    },
+    "feli1": {
+        "color_fondo": "Amarillo Muy Claro",
+        "tema": "Intermedio",
+        "volumen": 50,
+        "ultima_cancion": "spotify:track:4jCodMLVA5tV5MhPrspTfV"
+    },
+    "bebe2": {
+        "color_fondo": "Rosa Muy Pálido",
+        "tema": "Claro (Predeterminado)",
+        "volumen": 59,
+        "ultima_cancion": "spotify:track:1LiN0Z98FkR1t0m8KmLcAH"
     }
 }

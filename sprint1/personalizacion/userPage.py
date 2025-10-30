@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox, filedialog, simpledialog
 from PIL import Image, ImageTk, ImageDraw
 import json
 import os
+import sys
 import base64
 import io
 import numpy as np
@@ -357,10 +358,10 @@ class userProfilePage:
             draw = ImageDraw.Draw(final_img)
             w, h = final_img.size
             outline_width = max(1, int(min(w, h) * 0.03))
-            # usar bg_color para el contorno (esto hará que se vea integrado)
+            # usar bgColor para el contorno (esto hará que se vea integrado)
             try:
                 from PIL import ImageColor
-                outline_rgb = ImageColor.getrgb(self.bg_color) if hasattr(self, 'bg_color') and self.bg_color else (255, 255, 255)
+                outline_rgb = ImageColor.getrgb(self.bgColor) if hasattr(self, 'bgColor') and self.bgColor else (255, 255, 255)
             except Exception:
                 outline_rgb = (255, 255, 255)
             draw.ellipse([outline_width//2, outline_width//2, w - (outline_width//2) - 1, h - (outline_width//2) - 1], outline=outline_rgb, width=outline_width)
@@ -375,63 +376,63 @@ class userProfilePage:
         
         # Username (título)
         usernameLabel = tk.Label(mainFrame, text=self.userData.get("username", ""),
-                 font=("Arial", 14), bg=self.bg_color, fg="#424242")
+                 font=("Arial", 14), bg=self.bgColor, fg="#424242")
         usernameLabel.pack(pady=(5, 30))
         
         # Campos de información
-        fieldsFrame = tk.Frame(mainFrame, bg=self.bg_color)
+        fieldsFrame = tk.Frame(mainFrame, bg=self.bgColor)
         fieldsFrame.pack()
         
         # Nombre y Apellidos en una fila
-        nameFrame = tk.Frame(fieldsFrame, bg=self.bg_color)
+        nameFrame = tk.Frame(fieldsFrame, bg=self.bgColor)
         nameFrame.pack(pady=(0, 20))
         
         # Nombre
-        nombreBox = tk.Frame(nameFrame, bg=self.bg_color)
+        nombreBox = tk.Frame(nameFrame, bg=self.bgColor)
         nombreBox.grid(row=0, column=0, padx=(0, 40))
         tk.Label(nombreBox, text="Nombre", font=("Arial", 11), 
-            bg=self.bg_color, fg="#757575").pack()
+            bg=self.bgColor, fg="#757575").pack()
         tk.Label(nombreBox, text=self.userData.get("nombre", ""), font=("Arial", 11, "bold"), 
-            bg=self.bg_color, fg="#212121").pack(pady=(3, 0))
+            bg=self.bgColor, fg="#212121").pack(pady=(3, 0))
         
         # Apellidos
-        apellidosBox = tk.Frame(nameFrame, bg=self.bg_color)
+        apellidosBox = tk.Frame(nameFrame, bg=self.bgColor)
         apellidosBox.grid(row=0, column=1)
         tk.Label(apellidosBox, text="Apellidos", font=("Arial", 11), 
-            bg=self.bg_color, fg="#757575").pack()
+            bg=self.bgColor, fg="#757575").pack()
         tk.Label(apellidosBox, text=self.userData.get("apellidos", ""), font=("Arial", 11, "bold"), 
-            bg=self.bg_color, fg="#212121").pack(pady=(3, 0))
+            bg=self.bgColor, fg="#212121").pack(pady=(3, 0))
         
         # Correo (centrado)
-        correoFrame = tk.Frame(fieldsFrame, bg=self.bg_color)
+        correoFrame = tk.Frame(fieldsFrame, bg=self.bgColor)
         correoFrame.pack(pady=(0, 20))
         tk.Label(correoFrame, text="Correo", font=("Arial", 11),
-            bg=self.bg_color, fg="#757575").pack()
+            bg=self.bgColor, fg="#757575").pack()
         tk.Label(correoFrame, text=self.userData.get("correo", ""), font=("Arial", 11, "bold"),
-            bg=self.bg_color, fg="#212121").pack(pady=(3, 0))
+            bg=self.bgColor, fg="#212121").pack(pady=(3, 0))
         
         # Fecha de nacimiento (centrado)
-        fechaFrame = tk.Frame(fieldsFrame, bg=self.bg_color)
+        fechaFrame = tk.Frame(fieldsFrame, bg=self.bgColor)
         fechaFrame.pack(pady=(0, 20))
         tk.Label(fechaFrame, text="Fecha de nacimiento", font=("Arial", 11),
-            bg=self.bg_color, fg="#757575").pack()
+            bg=self.bgColor, fg="#757575").pack()
         tk.Label(fechaFrame, text=self.userData.get("fechaNacimiento", ""), font=("Arial", 11, "bold"),
-            bg=self.bg_color, fg="#212121").pack(pady=(3, 0))
+            bg=self.bgColor, fg="#212121").pack(pady=(3, 0))
         
         # Tarjeta de crédito con botón Editar (alineados)
-        cardMainFrame = tk.Frame(fieldsFrame, bg=self.bg_color)
+        cardMainFrame = tk.Frame(fieldsFrame, bg=self.bgColor)
         cardMainFrame.pack(pady=(0, 20))
         
-        cardContentFrame = tk.Frame(cardMainFrame, bg=self.bg_color)
+        cardContentFrame = tk.Frame(cardMainFrame, bg=self.bgColor)
         cardContentFrame.pack()
         
         # Label y valor de tarjeta
-        cardLabelFrame = tk.Frame(cardContentFrame, bg=self.bg_color)
+        cardLabelFrame = tk.Frame(cardContentFrame, bg=self.bgColor)
         cardLabelFrame.grid(row=0, column=0, sticky="w")
         tk.Label(cardLabelFrame, text="Tarjeta de credito", font=("Arial", 11),
-            bg=self.bg_color, fg="#757575").pack(anchor="w")
+            bg=self.bgColor, fg="#757575").pack(anchor="w")
         self.cardValueLabel = tk.Label(cardLabelFrame, text=self.getMaskedCardNumber(), font=("Arial", 11, "bold"),
-            bg=self.bg_color, fg="#212121")
+            bg=self.bgColor, fg="#212121")
         self.cardValueLabel.pack(anchor="w", pady=(3, 0))
         
         # Botón Editar / Agregar según si hay tarjeta
@@ -445,42 +446,42 @@ class userProfilePage:
             btn_cmd = self.showNewCardDialog
 
         btnEditCard = tk.Button(cardContentFrame, text=btn_label, command=btn_cmd,
-            bg=self.bg_color, fg="black", font=("Arial", 10), cursor="hand2", relief=tk.SOLID,
+            bg=self.bgColor, fg="black", font=("Arial", 10), cursor="hand2", relief=tk.SOLID,
             borderwidth=1, padx=18, pady=4)
         btnEditCard.grid(row=0, column=1, padx=(15, 0), sticky="e")
         
         # Contraseña con botón Editar (alineados)
-        passwordMainFrame = tk.Frame(fieldsFrame, bg=self.bg_color)
+        passwordMainFrame = tk.Frame(fieldsFrame, bg=self.bgColor)
         passwordMainFrame.pack(pady=(0, 30))
         
-        passwordContentFrame = tk.Frame(passwordMainFrame, bg=self.bg_color)
+        passwordContentFrame = tk.Frame(passwordMainFrame, bg=self.bgColor)
         passwordContentFrame.pack()
         
         # Label y valor de contraseña
-        passwordLabelFrame = tk.Frame(passwordContentFrame, bg=self.bg_color)
+        passwordLabelFrame = tk.Frame(passwordContentFrame, bg=self.bgColor)
         passwordLabelFrame.grid(row=0, column=0, sticky="w")
         tk.Label(passwordLabelFrame, text="Contraseña", font=("Arial", 11),
-            bg=self.bg_color, fg="#757575").pack(anchor="w")
+            bg=self.bgColor, fg="#757575").pack(anchor="w")
         tk.Label(passwordLabelFrame, text="••••••••", font=("Arial", 11, "bold"),
-            bg=self.bg_color, fg="#212121").pack(anchor="w", pady=(3, 0))
+            bg=self.bgColor, fg="#212121").pack(anchor="w", pady=(3, 0))
         
         # Botón Editar
         btnEditPassword = tk.Button(passwordContentFrame, text="Editar",
                     command=self.showChangePasswordDialog,
-                    bg=self.bg_color, fg="black",
+                    bg=self.bgColor, fg="black",
                     font=("Arial", 10),
                     cursor="hand2", relief=tk.SOLID,
                     borderwidth=1, padx=18, pady=4)
         btnEditPassword.grid(row=0, column=1, padx=(15, 0), sticky="e")
         
         # Botones centrados
-        buttonsFrame = tk.Frame(fieldsFrame, bg=self.bg_color)
+        buttonsFrame = tk.Frame(fieldsFrame, bg=self.bgColor)
         buttonsFrame.pack()
         
         # Botón Registrar Cara
         btnRegisterFace = tk.Button(buttonsFrame, text="Registrar Cara",
                     command=self.registerFace,
-                    bg=self.bg_color, fg="black",
+                    bg=self.bgColor, fg="black",
                     font=("Arial", 11),
                     cursor="hand2", relief=tk.SOLID,
                     borderwidth=1, padx=45, pady=8)
@@ -489,7 +490,7 @@ class userProfilePage:
         # Botón Guardar Cambios
         btnSave = tk.Button(buttonsFrame, text="Guardar Cambios",
                 command=self.saveChanges,
-                bg=self.bg_color, fg="black",
+                bg=self.bgColor, fg="black",
                 font=("Arial", 11),
                 cursor="hand2", relief=tk.SOLID,
                 borderwidth=1, padx=35, pady=8)
@@ -515,7 +516,7 @@ class userProfilePage:
         dialog.grab_set()
         # actualizar visual y persistir si hace falta
         if self.updateCardDisplay():
-            self.save_user_data()
+            self.saveUserData()
         
         # Centrar diálogo
         dialog.update_idletasks()
@@ -628,7 +629,7 @@ class userProfilePage:
         dialog = tk.Toplevel(self.root)
         dialog.title("Cambiar Tarjeta - Paso 2 de 2")
         dialog.geometry("400x340")
-        dialog.configure(bg=self.bg_color)
+        dialog.configure(bg=self.bgColor)
         dialog.transient(self.root)
         dialog.grab_set()
 
@@ -638,40 +639,40 @@ class userProfilePage:
         y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
         dialog.geometry(f"+{x}+{y}")
 
-        contentFrame = tk.Frame(dialog, bg=self.bg_color, padx=20, pady=20)
+        contentFrame = tk.Frame(dialog, bg=self.bgColor, padx=20, pady=20)
         contentFrame.pack(fill=tk.BOTH, expand=True)
 
         tk.Label(contentFrame, text="Paso 2: Ingrese los datos de su nueva tarjeta",
-                 font=("Arial", 11, "bold"), bg=self.bg_color).pack(pady=(0, 5))
+                 font=("Arial", 11, "bold"), bg=self.bgColor).pack(pady=(0, 5))
 
         tk.Label(contentFrame, text="Complete todos los campos con la información de su nueva tarjeta",
-                 font=("Arial", 9), bg=self.bg_color, fg="#666").pack(pady=(0, 15))
+                 font=("Arial", 9), bg=self.bgColor, fg="#666").pack(pady=(0, 15))
 
         # Número de la tarjeta
         tk.Label(contentFrame, text="Número de la Tarjeta",
-                 font=("Arial", 10, "bold"), bg=self.bg_color).pack(anchor="w")
+                 font=("Arial", 10, "bold"), bg=self.bgColor).pack(anchor="w")
 
         entryNumero = tk.Entry(contentFrame, font=("Arial", 12), relief=tk.SOLID, borderwidth=1)
         entryNumero.pack(fill=tk.X, pady=(5, 15), ipady=5)
 
         # Frame para CVV y Fecha
-        bottomFrame = tk.Frame(contentFrame, bg=self.bg_color)
+        bottomFrame = tk.Frame(contentFrame, bg=self.bgColor)
         bottomFrame.pack(fill=tk.X, pady=10)
 
         # CVV
-        cvvFrame = tk.Frame(bottomFrame, bg=self.bg_color)
+        cvvFrame = tk.Frame(bottomFrame, bg=self.bgColor)
         cvvFrame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
 
-        tk.Label(cvvFrame, text="CVV", font=("Arial", 10, "bold"), bg=self.bg_color).pack(anchor="w")
+        tk.Label(cvvFrame, text="CVV", font=("Arial", 10, "bold"), bg=self.bgColor).pack(anchor="w")
 
         entryCvv = tk.Entry(cvvFrame, font=("Arial", 12), relief=tk.SOLID, borderwidth=1, width=8)
         entryCvv.pack(fill=tk.X, pady=(5, 0), ipady=5)
 
         # Fecha de caducidad
-        fechaFrame = tk.Frame(bottomFrame, bg=self.bg_color)
+        fechaFrame = tk.Frame(bottomFrame, bg=self.bgColor)
         fechaFrame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        tk.Label(fechaFrame, text="Fecha caducidad", font=("Arial", 10, "bold"), bg=self.bg_color).pack(anchor="w")
+        tk.Label(fechaFrame, text="Fecha caducidad", font=("Arial", 10, "bold"), bg=self.bgColor).pack(anchor="w")
 
         entryFecha = tk.Entry(fechaFrame, font=("Arial", 12), relief=tk.SOLID, borderwidth=1)
         entryFecha.pack(fill=tk.X, pady=(5, 0), ipady=5)
@@ -693,7 +694,7 @@ class userProfilePage:
         entryFecha.bind("<FocusOut>", onFechaFocusOut)
 
         # Botones
-        buttonFrame = tk.Frame(contentFrame, bg=self.bg_color)
+        buttonFrame = tk.Frame(contentFrame, bg=self.bgColor)
         buttonFrame.pack(pady=20)
 
         def guardarNuevaTarjeta():
@@ -721,19 +722,19 @@ class userProfilePage:
             self.updateCardDisplay()
             # Persistir los cambios
             try:
-                self.save_user_data()
+                self.saveUserData()
             except Exception:
                 pass
             messagebox.showinfo("Éxito", "Tarjeta actualizada correctamente", parent=dialog)
             dialog.destroy()
 
         btnGuardar = tk.Button(buttonFrame, text="Guardar", command=guardarNuevaTarjeta,
-                                bg=self.bg_color, fg="black", font=("Arial", 10), cursor="hand2",
+                                bg=self.bgColor, fg="black", font=("Arial", 10), cursor="hand2",
                                 relief=tk.SOLID, borderwidth=1, padx=20, pady=8)
         btnGuardar.pack(side=tk.LEFT, padx=5)
 
         btnCancelar = tk.Button(buttonFrame, text="Cancelar", command=dialog.destroy,
-                                bg=self.bg_color, fg="black", font=("Arial", 10), cursor="hand2",
+                                bg=self.bgColor, fg="black", font=("Arial", 10), cursor="hand2",
                                 relief=tk.SOLID, borderwidth=1, padx=20, pady=8)
         btnCancelar.pack(side=tk.LEFT, padx=5)
     # ya no cerramos automáticamente la ventana al abrirla
@@ -944,11 +945,31 @@ class userProfilePage:
             self.userData["contrasena"] = nueva
             # Persistir contraseña
             try:
-                self.save_user_data()
+                self.saveUserData()
             except Exception:
                 pass
             messagebox.showinfo("Éxito", "Contraseña actualizada correctamente", parent=dialog)
             dialog.destroy()
+        
+        # Botones
+        buttonFrame = tk.Frame(contentFrame, bg="white")
+        buttonFrame.pack(pady=20)
+        
+        btnGuardar = tk.Button(buttonFrame, text="Guardar",
+                              command=verificarContrasenas,
+                              bg="white", fg="black",
+                              font=("Arial", 10),
+                              cursor="hand2", relief=tk.SOLID,
+                              borderwidth=1, padx=20, pady=8)
+        btnGuardar.pack(side=tk.LEFT, padx=5)
+        
+        btnCancelar = tk.Button(buttonFrame, text="Cancelar",
+                               command=dialog.destroy,
+                               bg="white", fg="black",
+                               font=("Arial", 10),
+                               cursor="hand2", relief=tk.SOLID,
+                               borderwidth=1, padx=20, pady=8)
+        btnCancelar.pack(side=tk.LEFT, padx=5)
 
     def _prompt_new_password_for_user(self, usuario):
         """Prompt the user twice for a new password and return bcrypt hash or None."""
@@ -1464,12 +1485,12 @@ class userProfilePage:
             except Exception:
                 encrypted = b64
 
-            # Guardar en userData y persistir usando save_user_data
+            # Guardar en userData y persistir usando saveUserData
             try:
                 self.userData['face_enc'] = encrypted
                 # marcar que tiene foto registrada
                 self.userData['tieneFotoRegistrada'] = True
-                self.save_user_data()
+                self.saveUserData()
                 messagebox.showinfo("Éxito", "Rostro registrado y guardado correctamente")
             except Exception as e:
                 try:
@@ -1607,7 +1628,7 @@ class userProfilePage:
 
                 if self.updateProfileImage():
                     self.userData['tieneFotoRegistrada'] = True
-                    self.save_user_data()
+                    self.saveUserData()
                     
                 messagebox.showinfo("Éxito", "Foto de perfil actualizada")
             except Exception as e:
