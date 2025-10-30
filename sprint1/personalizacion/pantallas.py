@@ -228,62 +228,90 @@ class PantallaPersonalizacion:
             self.temaActual  
         )
         pantallaMusica.ejecutar()
-    
-    def abrirPantallaDificultad(self):
-        """
-        Abre la pantalla de selección de dificultad y luego el juego
-        Nueva funcionalidad para el botón "Vamos al juego"
-        """
-        print("Abriendo pantalla de dificultad...")
-        
-        # Crear y ejecutar la pantalla de dificultad con los colores personalizados
-        pantallaDificultad = PantallaDificultad(
-            self.pantalla,
-            self.colorFondoPersonalizado,
-            self.temaActual
-        )
-        
-        # Ejecutar la pantalla de dificultad y obtener la acción del usuario
-        accion, dificultad = pantallaDificultad.ejecutar()
-        
-        # Manejar la respuesta del usuario
-        if accion == 'JUGAR':
-            print(f"Iniciando juego con dificultad: {dificultad}")
-            
-            # Loop para poder volver a la pantalla de dificultad desde el juego
-            while True:
-                # Crear la pantalla del juego con los ajustes personalizados
-                pantallaJuego = PantallaJuego(
-                    self.pantalla,
-                    self.colorFondoPersonalizado,
-                    self.temaActual,
-                    dificultad
-                )
-                
-                # Pasar la dificultad seleccionada al juego
-                pantallaJuego.dificultad = dificultad
-                
-                # Ejecutar el juego
-                volverAlMenu = pantallaJuego.ejecutar()
-                
-                # Si el usuario presionó ESC en el juego, volver a dificultad
-                if volverAlMenu:
-                    print("Volviendo a pantalla de dificultad desde el juego...")
-                    
-                    # Volver a mostrar pantalla de dificultad
-                    pantallaDificultad = PantallaDificultad(
-                        self.pantalla,
-                        self.colorFondoPersonalizado,
-                        self.temaActual
-                    )
-                    
-                    accion_nueva, dificultad_nueva = pantallaDificultad.ejecutar()
-                    
-                    if accion_nueva == 'JUGAR':
-                        # Usuario eligió otra dificultad, continuar el loop
-                        dificultad = dificultad_nueva
-                        print(f"Nueva dificultad seleccionada: {dificultad}")
-                        continue
+
+    def _read_session_usuario(self):
+        import os, json
+        try:
+            repo_root = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
+            cwd = os.getcwd()
+            print(f'DEBUG: cwd={cwd}')
+            # Try several locations for session_user.json (now in dataBase folder)
+            candidates = [
+                os.path.join(repo_root, 'dataBase', 'session_user.json'),
+                os.path.join(cwd, 'dataBase', 'session_user.json'),
+                os.path.join(os.path.dirname(__file__), 'dataBase', 'session_user.json')
+            ]
+            for session_path in candidates:
+                try:
+                    print(f'DEBUG: buscando session_user en {session_path}')
+                    if os.path.exists(session_path):
+                        with open(session_path, 'r', encoding='utf-8') as f:
+                            try:
+                                d = json.load(f)
+                                usuario = d.get('usuario')
+                                print(f"DEBUG: session_user.json ({session_path}) contiene usuario={usuario}")
+                                return usuario
+                            except Exception as e:
+                                print(f"DEBUG: error leyendo session_user.json {session_path}: {e}")
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        return None
+
+    def marcarUsuarioPersonalizadoYSalir(self):
+        import os, json, subprocess, sys
+        usuario = self._read_session_usuario()
+        if not usuario:
+            # fallback: could prompt, but we'll try to find a single user or abort
+            # For safety, abort if no session user
+            print('No session usuario encontrado; no se marcará personalizado')
+            return
+
+        # Update usuarios.json: set personalizado = True for this usuario (case-insensitive match)
+        try:
+            repo_root = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
+            # usuarios.json is now in dataBase folder
+            usuarios_path = os.path.join(repo_root, 'dataBase', 'usuarios.json')
+            print(f'DEBUG: intentando leer usuarios.json en {usuarios_path}')
+            if os.path.exists(usuarios_path):
+                with open(usuarios_path, 'r', encoding='utf-8') as f:
+                    usuarios = json.load(f)
+            else:
+                usuarios = []
+
+            changed = False
+            for u in usuarios:
+                name = (u.get('usuario') or u.get('username') or '')
+                if name and name.lower() == usuario.lower():
+                    u['personalizado'] = True
+                    # Persistir el color de fondo seleccionado para que otras pantallas (ej. perfil Tkinter)
+                    # puedan leerlo. Guardamos tanto el nombre como el RGB.
+                    try:
+                        u['colorFondo'] = list(self.colorFondoPersonalizado.rgb)
+                        u['colorFondo_nombre'] = getattr(self.colorFondoPersonalizado, 'nombre', None)
+                    except Exception:
+                        pass
+                    changed = True
+                    break
+
+            # If session user not found earlier (e.g., usuario was None), try a fallback:
+            if not usuario:
+                try:
+                    # If there's exactly one user, assume it's the current
+                    if len(usuarios) == 1:
+                        candidate = usuarios[0]
+                        name = (candidate.get('usuario') or candidate.get('username') or '')
+                        if name:
+                            usuario = name
+                            candidate['personalizado'] = True
+                            try:
+                                candidate['colorFondo'] = list(self.colorFondoPersonalizado.rgb)
+                                candidate['colorFondo_nombre'] = getattr(self.colorFondoPersonalizado, 'nombre', None)
+                            except Exception:
+                                pass
+                            changed = True
+                            print(f"DEBUG: sesión faltante; único usuario en usuarios.json asumido: {usuario}")
                     else:
                         # Usuario presionó ESC o SALIR en dificultad, cerrar todo
                         print("Cerrando aplicación desde pantalla de dificultad...")

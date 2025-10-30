@@ -3,6 +3,7 @@
 import pygame
 import sys
 import os
+import subprocess
 
 # Importar desde personalizacion
 # Configuración para que el módulo encuentre las carpetas de 'personalizacion'
@@ -331,12 +332,36 @@ class PantallaJuego:
                 
                 # Click en botón de Usuario
                 if esta_sobre_usuario:
-                    print("Click en el boton de Usuario")
+                    print("Abriendo perfil de usuario...")
+                    try:
+                        # Guardar el estado actual del juego si es necesario
+                        pygame.quit()
+                        
+                        # Abrir userPage
+                        userpage_path = os.path.join(carpeta_personalizacion, 'userPage.py')
+                        runpy.run_path(userpage_path, run_name='__main__')
+                        
+                        # Cerrar el juego completamente
+                        self.ejecutando = False
+                        self.volver = False
+                        sys.exit(0)
+                        
+                    except Exception as e:
+                        print(f"Error al abrir perfil: {e}")
+                        # Intentar reiniciar Pygame si falla
+                        try:
+                            pygame.init()
+                            self.pantalla = pygame.display.set_mode((self.ancho, self.alto))
+                        except:
+                            self.ejecutando = False
+                            self.volver = False
+                    continue  # Importante: evitar que se procesen otros eventos
 
                 # Lógica del estado PERDIDO (prioridad alta)
                 if self.estadoJuego == "PERDIDO":
                     if self.botonReiniciar.manejarEvento(evento):
                         self.reiniciarJuego()
+                        
                         continue
 
                 # Lógica de SELECCIÓN de torres (en CONFIGURACION y JUGANDO)
