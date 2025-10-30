@@ -7,7 +7,6 @@ import sys
 import os
 
 "importar monedas desde coin"
-from coins import Coin, generarMonedas, actualizarJuego
 from coins import Coin, generarMonedas
 actualizarJuego
 # Importar desde personalizacion
