@@ -1,0 +1,13 @@
+[
+    {
+        "usuario": "USER",
+        "puntaje": 84.81,
+        "fecha": "2025-10-30 15:00:55",
+        "stats": {
+            "tempo": 120,
+            "popularidad": 50,
+            "avatarsMatados": 2,
+            "puntosParaMonedas": 20
+        }
+    }
+]
