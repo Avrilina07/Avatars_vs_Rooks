@@ -116,5 +116,19 @@
         "personalizado": false,
         "fechaRegistro": "30/10/2025 08:49:19",
         "mmaa": "gAAAAABpA3rvyNS9kNNdbDI4mJ9f_qcHAfF5Bo-s3_hs-rqsrWP_VCpfVEPGravcga0jXOL760GyoJTEGVG30KAmBxzCKO767A=="
+    },
+    {
+        "nombre": "hola",
+        "apellidos": "hola",
+        "usuario": "hola",
+        "email": "gAAAAABpA4PrGo3d9EyZXRZt763z3d3K_DyyGfA12V8qmQyS38hOc_G-nGIloDqPH284vQldl-tbH5OB6wA6Fv6xyGdrpB77jA==",
+        "contrasenaHash": "$2b$12$wB2xQ0OWyHCbgBXnOOh6o.lUjWstpI2uTAbnlU.lE.HMd1TgHu5Ui",
+        "fechaNacimiento": "23/10/2014",
+        "telefono": "gAAAAABpA4PsvqBxc4J5wRaWRiwPkZv7IeY11Db3t54hVw_ufudX7t-aeq09soZiNMSzbebu2uBxsb3F_8hlqQ8W8Eg00uBpXHjtXLeKAUnDX7EKwjIVRQM=",
+        "preguntaSeguridad": "¿Cuál es la mejor carrera del mundo?",
+        "respuestaSeguridad": "gAAAAABpA4Psax1PK3y4J_0hIDXHckPB3EzjtssXiQKZh8hg7RSJ9xsblPLrBPFkLc35HfCMNZx6KDkf5KOHiB4pqO-vBph12w==",
+        "personalizado": false,
+        "fechaRegistro": "30/10/2025 09:27:40",
+        "mmaa": "gAAAAABpA4PskQuCzf5tMZfnaLRv9cDLSaZ4AfiPI2RcLR4nsKqXUuo3W96p-WtEWLudJmaE7ks7sXbbJG8hxH3tXjFzr5gdaA=="
     }
 ]

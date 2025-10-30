@@ -133,23 +133,22 @@ class PantallaDificultad:
             
             elif evento.type == pygame.KEYDOWN:
                 if evento.key == pygame.K_ESCAPE:
+                    # ESC cierra el juego completamente, no vuelve a personalización
                     self.ejecutando = False
-                    self.volver = True
-                    return 'VOLVER'
+                    self.volver = False
+                    return 'QUIT'
             
-            # Manejar botón volver
-            if self.botonVolver.manejarEvento(evento):
-                self.ejecutando = False
-                self.volver = True
-                return 'VOLVER'
+            # Botón volver deshabilitado - no se puede volver a personalización
+            # El usuario solo puede ir hacia adelante (seleccionar dificultad)
             
             # Manejar botones de dificultad
             for boton in self.botones:
                 if boton.manejarEvento(evento):
                     if boton.nombre == 'SALIR':
+                        # El botón SALIR ahora cierra el juego completamente
                         self.ejecutando = False
-                        self.volver = True
-                        return 'VOLVER'
+                        self.volver = False
+                        return 'QUIT'
                     else:
                         # Seleccionar dificultad e iniciar juego
                         self.dificultadSeleccionada = boton.nombre
@@ -182,8 +181,8 @@ class PantallaDificultad:
         subtituloRect = subtitulo.get_rect(center=(self.ancho // 2, 150))
         self.pantalla.blit(subtitulo, subtituloRect)
         
-        # 5. Botón volver
-        self.botonVolver.dibujar(self.pantalla)
+        # 5. Botón volver NO se muestra (el usuario no puede regresar a personalización)
+        # self.botonVolver.dibujar(self.pantalla)  # COMENTADO
         
         # 6. Botones de dificultad con descripciones
         for boton in self.botones:
@@ -196,7 +195,7 @@ class PantallaDificultad:
                 self.pantalla.blit(desc, descRect)
         
         # 7. Información adicional en la parte inferior
-        info = self.fuenteDescripcion.render("Presiona ESC o el botón Volver para regresar", True, colorTexto)
+        info = self.fuenteDescripcion.render("Presiona ESC para salir", True, colorTexto)
         infoRect = info.get_rect(center=(self.ancho // 2, self.alto - 30))
         self.pantalla.blit(info, infoRect)
         

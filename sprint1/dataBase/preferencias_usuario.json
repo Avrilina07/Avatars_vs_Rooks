@@ -16,5 +16,11 @@
         "tema": "Claro (Predeterminado)",
         "volumen": 90,
         "ultima_cancion": "spotify:track:5dtzqRtiXKftAk6B6vxUmr"
+    },
+    "hola": {
+        "color_fondo": "Morado Claro",
+        "tema": "Intermedio",
+        "volumen": 100,
+        "ultima_cancion": "spotify:track:7bywjHOc0wSjGGbj04XbVi"
     }
 }

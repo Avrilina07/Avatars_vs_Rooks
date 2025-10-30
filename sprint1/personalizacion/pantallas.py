@@ -165,7 +165,9 @@ class PantallaPersonalizacion:
         #Maneja todos los eventos de la pantalla
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
-                self.ejecutando = False
+                # No permitir cerrar si es primera vez (usuario debe completar personalización)
+                # Solo permitir salir mediante el botón "Vamos al juego"
+                pass
             
             # Detectar cambio de tamaño de ventana
             elif evento.type == pygame.VIDEORESIZE:
@@ -173,10 +175,12 @@ class PantallaPersonalizacion:
                 self.alto = evento.h
                 self.actualizarPosiciones()
             
-            # Tecla ESC para salir de pantalla completa
+            # Tecla ESC deshabilitada - el usuario debe ir al juego
+            # No puede volver al login en la primera sesión
             elif evento.type == pygame.KEYDOWN:
                 if evento.key == pygame.K_ESCAPE:
-                    self.ejecutando = False
+                    # No hacer nada, el usuario debe usar el botón "Vamos al juego"
+                    pass
             
             # Manejar eventos de botones
             if self.botonInterfaz.manejarEvento(evento):
@@ -246,33 +250,54 @@ class PantallaPersonalizacion:
         if accion == 'JUGAR':
             print(f"Iniciando juego con dificultad: {dificultad}")
             
-            # Crear la pantalla del juego con los ajustes personalizados
-            pantallaJuego = PantallaJuego(
-                self.pantalla,
-                self.colorFondoPersonalizado,
-                self.temaActual,
-                dificultad
-            )
-            
-            # Pasar la dificultad seleccionada al juego
-            # (Puedes usar esto en el juego para ajustar la IA, velocidad, etc.)
-            pantallaJuego.dificultad = dificultad
-            
-            # Ejecutar el juego
-            volverAlMenu = pantallaJuego.ejecutar()
-            
-            # Si el usuario volvió del juego, continuar en personalización
-            if volverAlMenu:
-                print("Volviendo a personalización desde el juego...")
-                # No hacer nada, simplemente continuar el loop de personalización
+            # Loop para poder volver a la pantalla de dificultad desde el juego
+            while True:
+                # Crear la pantalla del juego con los ajustes personalizados
+                pantallaJuego = PantallaJuego(
+                    self.pantalla,
+                    self.colorFondoPersonalizado,
+                    self.temaActual,
+                    dificultad
+                )
+                
+                # Pasar la dificultad seleccionada al juego
+                pantallaJuego.dificultad = dificultad
+                
+                # Ejecutar el juego
+                volverAlMenu = pantallaJuego.ejecutar()
+                
+                # Si el usuario presionó ESC en el juego, volver a dificultad
+                if volverAlMenu:
+                    print("Volviendo a pantalla de dificultad desde el juego...")
+                    
+                    # Volver a mostrar pantalla de dificultad
+                    pantallaDificultad = PantallaDificultad(
+                        self.pantalla,
+                        self.colorFondoPersonalizado,
+                        self.temaActual
+                    )
+                    
+                    accion_nueva, dificultad_nueva = pantallaDificultad.ejecutar()
+                    
+                    if accion_nueva == 'JUGAR':
+                        # Usuario eligió otra dificultad, continuar el loop
+                        dificultad = dificultad_nueva
+                        print(f"Nueva dificultad seleccionada: {dificultad}")
+                        continue
+                    else:
+                        # Usuario presionó ESC o SALIR en dificultad, cerrar todo
+                        print("Cerrando aplicación desde pantalla de dificultad...")
+                        self.ejecutando = False
+                        break
+                else:
+                    # El juego terminó normalmente (sin ESC), cerrar aplicación
+                    print("Juego finalizado, cerrando aplicación...")
+                    self.ejecutando = False
+                    break
         
-        elif accion == 'VOLVER':
-            # El usuario volvió desde la pantalla de dificultad
-            print("Volviendo a personalización desde dificultad...")
-            # No hacer nada, simplemente continuar en personalización
-        
-        else:  # accion == 'QUIT'
-            # El usuario quiere salir completamente
+        elif accion == 'VOLVER' or accion == 'QUIT':
+            # Si intenta volver o salir desde dificultad, cerrar todo
+            print("Cerrando aplicación desde pantalla de dificultad...")
             self.ejecutando = False
 
     def dibujar(self):
