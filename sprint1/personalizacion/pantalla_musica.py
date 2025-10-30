@@ -109,7 +109,19 @@ class PantallaMusica:
                         )
                         if rectResultado.collidepoint(evento.pos):
                             track = self.resultados[i]
-                            nombre, artista, uri = self.spotify.obtenerInfoCancion(track)
+                            # obtenerInfoCancion devuelve (nombre, artista, uri, tempo, popularity)
+                            try:
+                                info = self.spotify.obtenerInfoCancion(track)
+                                if info and len(info) >= 3:
+                                    nombre = info[0]
+                                    artista = info[1]
+                                    uri = info[2]  # El URI está en la posición 2
+                                else:
+                                    print(f"Error: obtenerInfoCancion devolvió datos incompletos: {info}")
+                                    continue
+                            except Exception as e:
+                                print(f"Error obteniendo info de canción: {e}")
+                                continue
                             
                             # Reproducir canción
                             if self.spotify.reproducirCancion(uri):
@@ -173,8 +185,20 @@ class PantallaMusica:
                 pygame.draw.rect(self.pantalla, (255, 255, 255), rectResultado, border_radius=5)
                 pygame.draw.rect(self.pantalla, (0, 0, 0), rectResultado, 2, border_radius=5)
                 
-                # Texto del resultado
-                nombre, artista, _ = self.spotify.obtenerInfoCancion(track)
+                # Texto del resultado - obtenerInfoCancion devuelve (nombre, artista, uri, tempo, popularity)
+                try:
+                    info = self.spotify.obtenerInfoCancion(track)
+                    if info and len(info) >= 2:
+                        nombre = info[0]
+                        artista = info[1]
+                    else:
+                        nombre = "Desconocido"
+                        artista = "Desconocido"
+                except Exception as e:
+                    print(f"Error obteniendo info de canción: {e}")
+                    nombre = "Desconocido"
+                    artista = "Desconocido"
+                
                 textoResultado = f"{i+1}. {nombre} - {artista}"
                 
                 # Truncar si es muy largo
