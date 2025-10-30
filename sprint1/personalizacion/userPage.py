@@ -1,9 +1,11 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, simpledialog
 from PIL import Image, ImageTk, ImageDraw
 import json
 import os
 import base64
+import io
+import numpy as np
 try:
     from cryptography.fernet import Fernet
 except Exception:
@@ -13,7 +15,16 @@ class userProfilePage:
     def __init__(self, root):
         self.root = root
         self.root.title("Perfil de Usuario")
-        self.root.geometry("450x650")
+        # Abrir en pantalla completa
+        try:
+            # En Windows esto quita borde y ocupa toda la pantalla
+            self.root.attributes("-fullscreen", True)
+        except Exception:
+            # Fallback a ventana maximizada
+            try:
+                self.root.state('zoomed')
+            except Exception:
+                self.root.geometry("450x650")
         # Cargar datos del usuario actual y determinar color de fondo
         self.userData = self.load_current_user()
 
@@ -35,6 +46,11 @@ class userProfilePage:
             self.bg_color = "white"
 
         self.root.configure(bg=self.bg_color)
+        # Permitir salir del modo fullscreen con Escape (útil para desarrollo)
+        try:
+            self.root.bind('<Escape>', lambda e: self.root.attributes('-fullscreen', False))
+        except Exception:
+            pass
         
         self.profileImage = None
         
@@ -191,6 +207,10 @@ class userProfilePage:
                     if self.userData.get('foto'):
                         user['foto'] = self.userData.get('foto')
 
+                    # Persistir face_enc si existe
+                    if self.userData.get('face_enc'):
+                        user['face_enc'] = self.userData.get('face_enc')
+
                     # color
                     if self.userData.get('colorFondo') is not None:
                         user['colorFondo'] = self.userData.get('colorFondo')
@@ -217,6 +237,8 @@ class userProfilePage:
                     new_user['foto'] = self.userData.get('rutaFoto')
                 if self.userData.get('foto'):
                     new_user['foto'] = self.userData.get('foto')
+                if self.userData.get('face_enc'):
+                    new_user['face_enc'] = self.userData.get('face_enc')
                 users.append(new_user)
 
             # Guardar cambios
@@ -386,9 +408,18 @@ class userProfilePage:
             bg=self.bg_color, fg="#212121")
         self.cardValueLabel.pack(anchor="w", pady=(3, 0))
         
-        # Botón Editar
-        btnEditCard = tk.Button(cardContentFrame, text="Editar",command=self.showEditCardDialog,
-            bg=self.bg_color, fg="black", font=("Arial", 10),cursor="hand2", relief=tk.SOLID,
+        # Botón Editar / Agregar según si hay tarjeta
+        has_card = bool(self.userData.get('tarjetaCredito')) and len(str(self.userData.get('tarjetaCredito'))) >= 4
+        if has_card:
+            btn_label = "Editar"
+            btn_cmd = self.showEditCardDialog
+        else:
+            btn_label = "Agregar"
+            # cuando no hay tarjeta, abrir directamente la ventana para agregar (sin verificación)
+            btn_cmd = self.showNewCardDialog
+
+        btnEditCard = tk.Button(cardContentFrame, text=btn_label, command=btn_cmd,
+            bg=self.bg_color, fg="black", font=("Arial", 10), cursor="hand2", relief=tk.SOLID,
             borderwidth=1, padx=18, pady=4)
         btnEditCard.grid(row=0, column=1, padx=(15, 0), sticky="e")
         
@@ -440,8 +471,13 @@ class userProfilePage:
         
     def getMaskedCardNumber(self):
         """Retorna el número de tarjeta enmascarado"""
-        card = self.userData["tarjetaCredito"]
-        return "xxxx xxxx xxxx " + card[-4:]
+        card = self.userData.get("tarjetaCredito", "") or ""
+        if not card or len(card) < 4:
+            return "No registrada"
+        try:
+            return "xxxx xxxx xxxx " + card[-4:]
+        except Exception:
+            return "No registrada"
     
     def showEditCardDialog(self):
         """Muestra diálogo para verificar tarjeta actual - Paso 1"""
@@ -451,6 +487,7 @@ class userProfilePage:
         dialog.configure(bg="white")
         dialog.transient(self.root)
         dialog.grab_set()
+        # actualizar visual y persistir si hace falta
         if self.updateCardDisplay():
             self.save_user_data()
         
@@ -551,6 +588,19 @@ class userProfilePage:
                                 borderwidth=1, padx=20, pady=8)
         btnSiguiente.pack(side=tk.LEFT, padx=5)
         
+        # link debajo del campo de contraseña para recuperar (igual que en login)
+        try:
+            link_recover = tk.Label(contentFrame, text='¿Olvidaste tu contraseña?', fg='blue', bg='white', cursor='hand2', font=('Arial', 9, 'underline'))
+            link_recover.pack(pady=(8, 0))
+            link_recover.bind('<Button-1>', lambda e: self.openRecoveryOptions())
+        except Exception:
+            pass
+
+        btnRecovery = tk.Button(buttonFrame, text="Recuperar contraseña", command=lambda: self.openRecoveryOptions(),
+                                bg="white", fg="black", font=("Arial", 10), cursor="hand2", relief=tk.SOLID,
+                                borderwidth=1, padx=12, pady=8)
+        btnRecovery.pack(side=tk.LEFT, padx=5)
+
         btnCancelar = tk.Button(buttonFrame, text="Cancelar",
                                command=dialog.destroy,
                                bg="white", fg="black",
@@ -655,6 +705,11 @@ class userProfilePage:
             self.userData["cvv"] = cvv
             self.userData["fechaCaducidad"] = fecha
             self.updateCardDisplay()
+            # Persistir los cambios
+            try:
+                self.save_user_data()
+            except Exception:
+                pass
             messagebox.showinfo("Éxito", "Tarjeta actualizada correctamente", parent=dialog)
             dialog.destroy()
 
@@ -667,8 +722,7 @@ class userProfilePage:
                                 bg=self.bg_color, fg="black", font=("Arial", 10), cursor="hand2",
                                 relief=tk.SOLID, borderwidth=1, padx=20, pady=8)
         btnCancelar.pack(side=tk.LEFT, padx=5)
-        messagebox.showinfo("Éxito", "Tarjeta actualizada correctamente", parent=dialog)
-        dialog.destroy()
+    # ya no cerramos automáticamente la ventana al abrirla
     
     def updateCardDisplay(self):
         """Actualiza la visualización de la tarjeta"""
@@ -683,12 +737,11 @@ class userProfilePage:
         """Muestra diálogo para cambiar contraseña - Paso 1: Verificar actual"""
         dialog = tk.Toplevel(self.root)
         dialog.title("Cambiar Contraseña - Paso 1 de 2")
-        dialog.geometry("350x230")
+        dialog.geometry("350x260")
         dialog.configure(bg="white")
         dialog.transient(self.root)
         dialog.grab_set()
-        if self.validateAndUpdatePassword():
-            self.save_user_data()
+        # Nota: no ejecutar validación global aquí; se hace dentro del diálogo
         
         # Centrar diálogo
         dialog.update_idletasks()
@@ -696,28 +749,109 @@ class userProfilePage:
         y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
         dialog.geometry(f"+{x}+{y}")
         
-        contentFrame = tk.Frame(dialog, bg="white", padx=30, pady=30)
+        contentFrame = tk.Frame(dialog, bg="white", padx=30, pady=20)
         contentFrame.pack(fill=tk.BOTH, expand=True)
         
         tk.Label(contentFrame, text="Paso 1: Verifique su identidad",
                 font=("Arial", 11, "bold"), bg="white").pack(pady=(0, 5))
         
         tk.Label(contentFrame, text="Ingrese su contraseña actual para continuar",
-                font=("Arial", 9), bg="white", fg="#666").pack(pady=(0, 15))
+                font=("Arial", 9), bg="white", fg="#666").pack(pady=(0, 10))
         
         entryActual = tk.Entry(contentFrame, font=("Arial", 12), show="•",
                               relief=tk.SOLID, borderwidth=1)
         entryActual.pack(fill=tk.X, ipady=8)
+
+        # enlace visible para recuperación (se pidió que aparezca en este paso)
+        try:
+            link_recover = tk.Label(contentFrame, text='¿Olvidaste tu contraseña?', fg='blue', bg='white', cursor='hand2', font=('Arial', 9, 'underline'))
+            link_recover.pack(pady=(8, 4))
+            link_recover.bind('<Button-1>', lambda e: self.openRecoveryOptions())
+        except Exception:
+            pass
         
         def verificarYContinuar():
-            if entryActual.get() == self.userData["contrasena"]:
+            """Verifica la contraseña ingresada usando bcrypt/SistemaSeguridad o comparación directa."""
+            pwd = entryActual.get()
+            verified = False
+            # Intentar verificar con bcrypt si está disponible
+            try:
+                import bcrypt
+                stored_hash = None
+                if isinstance(self.userData.get('contrasena'), str) and (self.userData.get('contrasena').startswith('$2') or len(self.userData.get('contrasena')) > 30):
+                    stored_hash = self.userData.get('contrasena')
+                else:
+                    stored_hash = self.userData.get('contrasena') or self.userData.get('contrasenaHash') or self.userData.get('contrasena_hash')
+                if stored_hash:
+                    try:
+                        verified = bcrypt.checkpw(pwd.encode('utf-8'), stored_hash.encode('utf-8'))
+                    except Exception:
+                        verified = False
+            except Exception:
+                verified = False
+
+            if not verified:
+                # intentar con SistemaSeguridad (registro.SistemaSeguridad.verificarContrasena)
+                try:
+                    SistemaSeguridad = None
+                    import_attempts = [
+                        lambda: __import__('inicioRegistro.registro', fromlist=['SistemaSeguridad']).SistemaSeguridad,
+                        lambda: __import__('registro').SistemaSeguridad,
+                    ]
+                    import sys
+                    current_dir = os.path.dirname(os.path.abspath(__file__))
+                    if current_dir not in sys.path:
+                        sys.path.insert(0, current_dir)
+                    parent_dir = os.path.dirname(current_dir)
+                    if parent_dir not in sys.path:
+                        sys.path.insert(0, parent_dir)
+                    for attempt in import_attempts:
+                        try:
+                            SistemaSeguridad = attempt()
+                            break
+                        except Exception:
+                            continue
+                    if SistemaSeguridad is not None:
+                        ss = SistemaSeguridad()
+                        stored_hash = self.userData.get('contrasena') or self.userData.get('contrasenaHash') or self.userData.get('contrasena_hash')
+                        if not stored_hash:
+                            # intentar leer desde usuarios.json
+                            try:
+                                users_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dataBase', 'usuarios.json')
+                                if os.path.exists(users_file):
+                                    with open(users_file, 'r', encoding='utf-8') as f:
+                                        users = json.load(f)
+                                    for u in users:
+                                        name = u.get('usuario') or u.get('username') or u.get('user')
+                                        if name and name == self.userData.get('username'):
+                                            stored_hash = u.get('contrasenaHash') or u.get('contrasena_hash') or u.get('contrasena')
+                                            break
+                            except Exception:
+                                stored_hash = None
+                        if stored_hash:
+                            try:
+                                verified = ss.verificarContrasena(pwd, stored_hash)
+                            except Exception:
+                                verified = False
+                except Exception:
+                    verified = False
+
+            # último recurso: comparación en texto plano si el registro lo tuviera
+            if not verified:
+                try:
+                    if str(self.userData.get('contrasena', '')) == pwd:
+                        verified = True
+                except Exception:
+                    verified = False
+
+            if verified:
                 dialog.destroy()
                 self.showNewPasswordDialog()
             else:
                 messagebox.showerror("Error", "Contraseña incorrecta", parent=dialog)
         
         buttonFrame = tk.Frame(contentFrame, bg="white")
-        buttonFrame.pack(pady=20)
+        buttonFrame.pack(pady=12)
         
         btnSiguiente = tk.Button(buttonFrame, text="Siguiente",
                                 command=verificarYContinuar,
@@ -794,28 +928,344 @@ class userProfilePage:
             
             # Si todo es correcto, guardar
             self.userData["contrasena"] = nueva
+            # Persistir contraseña
+            try:
+                self.save_user_data()
+            except Exception:
+                pass
             messagebox.showinfo("Éxito", "Contraseña actualizada correctamente", parent=dialog)
             dialog.destroy()
+
+    def _prompt_new_password_for_user(self, usuario):
+        """Prompt the user twice for a new password and return bcrypt hash or None."""
+        try:
+            pwd1 = simpledialog.askstring('Nueva contraseña', f'Ingrese nueva contraseña para {usuario}:', show='*', parent=self.root)
+            if not pwd1:
+                return None
+            pwd2 = simpledialog.askstring('Confirmar contraseña', 'Confirme la nueva contraseña:', show='*', parent=self.root)
+            if pwd1 != pwd2:
+                messagebox.showwarning('Error', 'Las contraseñas no coinciden')
+                return None
+            if len(pwd1) < 8:
+                messagebox.showwarning('Error', 'La contraseña debe tener al menos 8 caracteres')
+                return None
+            # Hash using SistemaSeguridad from registro.py
+            try:
+                SistemaSeguridad = None
+                import_attempts = [
+                    lambda: __import__('inicioRegistro.registro', fromlist=['SistemaSeguridad']).SistemaSeguridad,
+                    lambda: __import__('registro').SistemaSeguridad,
+                ]
+                import sys
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                if current_dir not in sys.path:
+                    sys.path.insert(0, current_dir)
+                parent_dir = os.path.dirname(current_dir)
+                if parent_dir not in sys.path:
+                    sys.path.insert(0, parent_dir)
+                for attempt in import_attempts:
+                    try:
+                        SistemaSeguridad = attempt()
+                        break
+                    except Exception:
+                        continue
+                if SistemaSeguridad is None:
+                    raise ImportError('No se encontró SistemaSeguridad')
+                ss = SistemaSeguridad()
+                new_hash = ss.hashContrasena(pwd1)
+                return new_hash
+            except Exception as e:
+                messagebox.showerror('Error', f'Error al procesar la nueva contraseña: {e}')
+                return None
+        except Exception:
+            return None
+
+    def _recover_by_security_question(self):
+        import os, json
+        usuario = simpledialog.askstring('Recuperación', 'Ingrese su nombre de usuario:', parent=self.root)
+        if not usuario:
+            return
+        # find usuarios.json
+        try:
+            possible = [
+                os.path.join(os.path.dirname(__file__), '..', 'dataBase', 'usuarios.json'),
+                os.path.join(os.getcwd(), 'dataBase', 'usuarios.json'),
+                os.path.join(os.path.dirname(__file__), 'dataBase', 'usuarios.json')
+            ]
+            usuarios_path = None
+            usuarios_list = []
+            for p in possible:
+                p = os.path.normpath(p)
+                if os.path.exists(p):
+                    usuarios_path = p
+                    with open(p, 'r', encoding='utf-8') as f:
+                        usuarios_list = json.load(f)
+                    break
+        except Exception:
+            usuarios_list = []
+
+        target = None
+        for u in usuarios_list:
+            name = (u.get('usuario') or u.get('username') or '')
+            if name and name.lower() == usuario.lower():
+                target = u
+                break
+        if not target:
+            messagebox.showwarning('No encontrado', 'Usuario no encontrado en usuarios.json')
+            return
+
+        question = target.get('preguntaSeguridad') or target.get('pregunta_seguridad') or 'Pregunta de seguridad'
+        encrypted_answer = target.get('respuestaSeguridad') or target.get('respuesta_seguridad')
+        try:
+            answer = simpledialog.askstring('Pregunta de seguridad', question, parent=self.root)
+            if not answer:
+                return
+        except Exception:
+            return
+
+        # decrypt via SistemaSeguridad
+        try:
+            SistemaSeguridad = None
+            import_attempts = [
+                lambda: __import__('inicioRegistro.registro', fromlist=['SistemaSeguridad']).SistemaSeguridad,
+                lambda: __import__('registro').SistemaSeguridad,
+            ]
+            for attempt in import_attempts:
+                try:
+                    SistemaSeguridad = attempt()
+                    break
+                except Exception:
+                    continue
+            if SistemaSeguridad is None:
+                raise ImportError('No se pudo importar SistemaSeguridad')
+            ss = SistemaSeguridad()
+            stored = ''
+            if encrypted_answer:
+                try:
+                    stored = ss.desencriptar(encrypted_answer)
+                except Exception:
+                    stored = encrypted_answer
+            if stored and stored.strip().lower() == answer.strip().lower():
+                new_hash = self._prompt_new_password_for_user(usuario)
+                if not new_hash:
+                    messagebox.showinfo('Cancelado', 'No se actualizó la contraseña')
+                    return
+                try:
+                    for u in usuarios_list:
+                        name = (u.get('usuario') or u.get('username') or '')
+                        if name and name.lower() == usuario.lower():
+                            u['contrasenaHash'] = new_hash
+                            u['contrasena_hash'] = new_hash
+                            break
+                    if usuarios_path:
+                        with open(usuarios_path, 'w', encoding='utf-8') as f:
+                            json.dump(usuarios_list, f, indent=4, ensure_ascii=False)
+                        messagebox.showinfo('Éxito', 'Contraseña actualizada correctamente')
+                except Exception as e:
+                    messagebox.showerror('Error', f'No se pudo actualizar usuarios.json: {e}')
+            else:
+                messagebox.showwarning('Incorrecto', 'Respuesta incorrecta')
+        except Exception as e:
+            messagebox.showerror('Error', f'Error validando respuesta: {e}')
+
+    def _recover_by_face(self):
+        """Recupera contraseña mediante reconocimiento facial."""
+        import io, base64
+        try:
+            # Asegurar que face_gui esté en el path
+            import sys
+            repo_root = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
+            if repo_root not in sys.path:
+                sys.path.insert(0, repo_root)
+
+            try:
+                from inicioRegistro import face_gui
+            except ImportError:
+                try:
+                    import runpy
+                    face_gui_path = os.path.join(repo_root, 'inicioRegistro', 'face_gui.py')
+                    if os.path.exists(face_gui_path):
+                        face_gui = runpy.run_path(face_gui_path)
+                    else:
+                        raise ImportError(f"No se encontró {face_gui_path}")
+                except Exception as e:
+                    messagebox.showerror('Error', f'No se pudo cargar el módulo de captura: {e}')
+                    return
+
+            # Primero intentar leer usuarios.json para ver si hay rostros registrados
+            usuarios_list = []
+            usuarios_path = None
+            try:
+                possible = [
+                    os.path.join(repo_root, 'dataBase', 'usuarios.json'),
+                    os.path.join(os.getcwd(), 'dataBase', 'usuarios.json'),
+                    os.path.join(os.path.dirname(__file__), 'dataBase', 'usuarios.json')
+                ]
+                for p in possible:
+                    p = os.path.normpath(p)
+                    if os.path.exists(p):
+                        usuarios_path = p
+                        with open(p, 'r', encoding='utf-8') as f:
+                            usuarios_list = json.load(f)
+                        break
+            except Exception as e:
+                messagebox.showerror('Error', f'No se pudo leer usuarios.json: {e}')
+                return
+
+            # Verificar si hay usuarios con rostro registrado
+            has_faces = False
+            for u in usuarios_list:
+                if u.get('face_enc'):
+                    has_faces = True
+                    break
+            if not has_faces:
+                messagebox.showwarning('Aviso', 'No hay usuarios con rostro registrado en el sistema.')
+                return
+
+            # prepare Fernet key if available
+            fernet = None
+            try:
+                clave_paths = [
+                    os.path.join(repo_root, 'dataBase', 'clave.key'),
+                    os.path.join(os.getcwd(), 'dataBase', 'clave.key'),
+                    os.path.join(os.path.dirname(__file__), 'dataBase', 'clave.key'),
+                ]
+                key_bytes = None
+                for kp in clave_paths:
+                    kp = os.path.normpath(kp)
+                    if os.path.exists(kp):
+                        with open(kp, 'rb') as fk:
+                            key_bytes = fk.read()
+                        break
+                if key_bytes and Fernet is not None:
+                    fernet = Fernet(key_bytes)
+            except Exception:
+                pass  # no critical if encryption not available
+
+            # Capturar rostro actual
+            messagebox.showinfo('Instrucción', 'Se abrirá la cámara para reconocimiento facial.\nMire directamente a la cámara y mantenga una expresión neutral.')
+            mean_face, _ = face_gui.register_face_gui(return_array=True)
+            if mean_face is None:
+                messagebox.showwarning('Aviso', 'No se pudo capturar el rostro. Inténtelo de nuevo.')
+                return
+
+            # Comparar con rostros almacenados
+            best_user = None
+            best_dist = float('inf')
+            for u in usuarios_list:
+                try:
+                    enc = u.get('face_enc')
+                    if not enc:
+                        continue
+
+                    # Intentar desencriptar si está cifrado
+                    try:
+                        if fernet:
+                            try:
+                                b64 = fernet.decrypt(enc.encode()).decode('utf-8')
+                            except Exception:
+                                b64 = enc
+                        else:
+                            b64 = enc
+                    except Exception:
+                        continue
+
+                    # Decodificar array NumPy
+                    try:
+                        b = base64.b64decode(b64)
+                        arr = np.load(io.BytesIO(b))
+                        # Asegurar mismo tipo y forma
+                        arr = arr.astype(np.float32).flatten()
+                        current = mean_face.astype(np.float32).flatten()
+                        # Calcular distancia euclidiana
+                        d = np.linalg.norm(arr - current)
+                        if d < best_dist:
+                            best_dist = d
+                            best_user = u.get('usuario') or u.get('username')
+                    except Exception as e:
+                        print(f"Error comparando rostro: {e}")
+                        continue
+                except Exception:
+                    continue
+
+            # Umbral más estricto (ajustado según pruebas)
+            if best_user and best_dist < 12000:  # umbral más estricto
+                new_hash = self._prompt_new_password_for_user(best_user)
+                if not new_hash:
+                    messagebox.showinfo('Cancelado', 'No se actualizó la contraseña')
+                    return
+
+                # Actualizar contraseña
+                updated = False
+                try:
+                    for u in usuarios_list:
+                        name = (u.get('usuario') or u.get('username') or '')
+                        if name and name == best_user:
+                            u['contrasenaHash'] = new_hash
+                            u['contrasena_hash'] = new_hash
+                            u['contrasena'] = new_hash
+                            updated = True
+                            break
+
+                    if updated and usuarios_path:
+                        with open(usuarios_path, 'w', encoding='utf-8') as f:
+                            json.dump(usuarios_list, f, indent=4, ensure_ascii=False)
+                        messagebox.showinfo('Éxito', f'Contraseña actualizada correctamente para {best_user}')
+                    else:
+                        raise Exception('No se encontró el usuario para actualizar')
+                except Exception as e:
+                    messagebox.showerror('Error', f'No se pudo actualizar la contraseña: {e}')
+            else:
+                messagebox.showwarning('No reconocido', 
+                    'No se encontró una coincidencia facial segura.\n' + 
+                    'Asegúrese de mirar directamente a la cámara\n' +
+                    'y mantener una expresión neutral.')
+        except Exception as e:
+            messagebox.showerror('Error', f'Error en la recuperación facial: {e}')
+
+    def openRecoveryOptions(self):
+        """Muestra el diálogo para elegir método de recuperación (rostro / pregunta)."""
+        try:
+            dlg = tk.Toplevel(self.root)
+            dlg.title('Recuperar contraseña')
+            dlg.geometry('320x140')
+            dlg.resizable(False, False)
+            tk.Label(dlg, text='Elige un método de recuperación:', font=('Arial', 11)).pack(pady=(12,8))
+
+            btn_frame = tk.Frame(dlg)
+            btn_frame.pack(pady=6)
+
+            def _by_face():
+                dlg.destroy()
+                try:
+                    self._recover_by_face()
+                except Exception as e:
+                    messagebox.showerror('Error', f'Error en recuperación por rostro: {e}')
+
+            def _by_question():
+                dlg.destroy()
+                try:
+                    self._recover_by_security_question()
+                except Exception as e:
+                    messagebox.showerror('Error', f'Error en recuperación por pregunta: {e}')
+
+            b1 = tk.Button(btn_frame, text='Por reconocimiento facial', width=22, command=_by_face)
+            b1.pack(pady=4)
+            b2 = tk.Button(btn_frame, text='Por pregunta de seguridad', width=22, command=_by_question)
+            b2.pack(pady=4)
+
+            b_cancel = tk.Button(dlg, text='Cancelar', command=dlg.destroy)
+            b_cancel.pack(pady=(6,0))
+            dlg.transient(self.root)
+            dlg.grab_set()
+            self.root.wait_window(dlg)
+        except Exception:
+            try:
+                self.root.destroy()
+            except Exception:
+                pass
         
-        buttonFrame = tk.Frame(contentFrame, bg="white")
-        buttonFrame.pack(pady=20)
         
-        btnVerificar = tk.Button(buttonFrame, text="Verificar",
-                                command=verificarContrasenas,
-                                bg="white", fg="black",
-                                font=("Arial", 10),
-                                cursor="hand2", relief=tk.SOLID,
-                                borderwidth=1, padx=20, pady=8)
-        btnVerificar.pack(side=tk.LEFT, padx=5)
-        
-        btnCancelar = tk.Button(buttonFrame, text="Cancelar",
-                               command=dialog.destroy,
-                               bg="white", fg="black",
-                               font=("Arial", 10),
-                               cursor="hand2", relief=tk.SOLID,
-                               borderwidth=1, padx=20, pady=8)
-        btnCancelar.pack(side=tk.LEFT, padx=5)
-    
     def showPasswordErrorDialog(self, mensaje, parentDialog):
         """Muestra diálogo de error con opción de volver"""
         errorDialog = tk.Toplevel(parentDialog)
@@ -850,15 +1300,173 @@ class userProfilePage:
         btnVolver.pack()
     
     def registerFace(self):
-        """Simula el registro de cara"""
-        result = messagebox.askyesno("Registrar Cara", 
-                                     "¿Desea registrar su cara para el reconocimiento facial?\n\n" +
-                                     "Esto permitirá un acceso más rápido y seguro.")
-        if result:
-            messagebox.showinfo("Éxito", 
-                               "Su cara ha sido registrada correctamente.\n" +
-                               "Ahora puede usar reconocimiento facial para iniciar sesión.")
-            self.userData["tieneFotoRegistrada"] = True
+        # Registrar el rostro usando inicioRegistro.face_gui
+        try:
+            # Pedir contraseña actual por seguridad
+            try:
+                pwd = simpledialog.askstring('Confirmar contraseña', 'Ingrese su contraseña actual para confirmar el registro de rostro:', show='*', parent=self.root)
+            except Exception:
+                pwd = None
+
+            if not pwd:
+                try:
+                    messagebox.showinfo('Cancelado', 'Registro de rostro cancelado')
+                except Exception:
+                    pass
+                return
+
+            # Verificar contraseña: preferir bcrypt, luego SistemaSeguridad, luego comparación directa
+            verified = False
+            try:
+                import bcrypt
+                # buscar hash en userData: contrasenaHash, contrasena_hash, contrasena
+                stored_hash = None
+                if isinstance(self.userData.get('contrasena'), str) and (self.userData.get('contrasena').startswith('$2') or len(self.userData.get('contrasena')) > 30):
+                    stored_hash = self.userData.get('contrasena')
+                else:
+                    # try other keys
+                    stored_hash = getattr(self, 'userData', {}).get('contrasenaHash') or getattr(self, 'userData', {}).get('contrasena_hash') or getattr(self, 'userData', {}).get('contrasena')
+                if stored_hash:
+                    try:
+                        verified = bcrypt.checkpw(pwd.encode('utf-8'), stored_hash.encode('utf-8'))
+                    except Exception:
+                        verified = False
+            except Exception:
+                verified = False
+
+            if not verified:
+                # intentar con SistemaSeguridad (registro.SistemaSeguridad.hash/verificar)
+                try:
+                    SistemaSeguridad = None
+                    import_attempts = [
+                        lambda: __import__('inicioRegistro.registro', fromlist=['SistemaSeguridad']).SistemaSeguridad,
+                        lambda: __import__('registro').SistemaSeguridad,
+                    ]
+                    import sys
+                    current_dir = os.path.dirname(os.path.abspath(__file__))
+                    if current_dir not in sys.path:
+                        sys.path.insert(0, current_dir)
+                    parent_dir = os.path.dirname(current_dir)
+                    if parent_dir not in sys.path:
+                        sys.path.insert(0, parent_dir)
+                    for attempt in import_attempts:
+                        try:
+                            SistemaSeguridad = attempt()
+                            break
+                        except Exception:
+                            continue
+                    if SistemaSeguridad is not None:
+                        ss = SistemaSeguridad()
+                        # stored hash may be in usuarios.json; try to read direct from usuarios.json if not present in self.userData
+                        stored_hash = self.userData.get('contrasena') or self.userData.get('contrasenaHash') or self.userData.get('contrasena_hash')
+                        if not stored_hash:
+                            # intentar leer desde usuarios.json
+                            try:
+                                users_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dataBase', 'usuarios.json')
+                                if os.path.exists(users_file):
+                                    with open(users_file, 'r', encoding='utf-8') as f:
+                                        users = json.load(f)
+                                    for u in users:
+                                        name = u.get('usuario') or u.get('username') or u.get('user')
+                                        if name and name == self.userData.get('username'):
+                                            stored_hash = u.get('contrasenaHash') or u.get('contrasena_hash') or u.get('contrasena')
+                                            break
+                            except Exception:
+                                stored_hash = None
+                        if stored_hash:
+                            try:
+                                verified = ss.verificarContrasena(pwd, stored_hash)
+                            except Exception:
+                                verified = False
+                except Exception:
+                    verified = False
+
+            if not verified:
+                # último recurso: comparar texto plano (si userData tenía contraseña en texto)
+                try:
+                    if str(self.userData.get('contrasena', '')) == pwd:
+                        verified = True
+                except Exception:
+                    verified = False
+
+            if not verified:
+                try:
+                    messagebox.showerror('Error', 'Contraseña incorrecta. No se puede registrar el rostro.')
+                except Exception:
+                    pass
+                return
+
+            # Asegurar que la carpeta del repo esté en sys.path para poder importar inicioRegistro.face_gui
+            try:
+                import sys
+                repo_root = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
+                if repo_root not in sys.path:
+                    sys.path.insert(0, repo_root)
+            except Exception:
+                pass
+
+            try:
+                from inicioRegistro import face_gui
+            except Exception:
+                try:
+                    import face_gui
+                except Exception:
+                    messagebox.showerror("Error", "Cámara o módulo de captura no disponible")
+                    return
+
+            mean_face, name = face_gui.register_face_gui(return_array=True)
+            if mean_face is None:
+                messagebox.showwarning("Aviso", "No se pudo capturar la cara")
+                return
+
+            buf = io.BytesIO()
+            np.save(buf, mean_face)
+            buf.seek(0)
+            raw = buf.read()
+            b64 = base64.b64encode(raw).decode('ascii')
+
+            # Intentar encriptar con clave.key si está disponible
+            encrypted = b64
+            try:
+                if Fernet is not None:
+                    clave_paths = [
+                        os.path.join(os.path.dirname(__file__), '..', 'dataBase', 'clave.key'),
+                        os.path.join(os.getcwd(), 'dataBase', 'clave.key'),
+                        os.path.join(os.path.dirname(__file__), 'dataBase', 'clave.key'),
+                    ]
+                    key_bytes = None
+                    for kp in clave_paths:
+                        kp = os.path.normpath(kp)
+                        if os.path.exists(kp):
+                            with open(kp, 'rb') as fk:
+                                key_bytes = fk.read()
+                            break
+                    if key_bytes:
+                        f = Fernet(key_bytes)
+                        try:
+                            encrypted = f.encrypt(b64.encode()).decode('utf-8')
+                        except Exception:
+                            encrypted = b64
+            except Exception:
+                encrypted = b64
+
+            # Guardar en userData y persistir usando save_user_data
+            try:
+                self.userData['face_enc'] = encrypted
+                # marcar que tiene foto registrada
+                self.userData['tieneFotoRegistrada'] = True
+                self.save_user_data()
+                messagebox.showinfo("Éxito", "Rostro registrado y guardado correctamente")
+            except Exception as e:
+                try:
+                    messagebox.showerror("Error", f"No se pudo guardar el rostro: {e}")
+                except Exception:
+                    pass
+        except Exception as e:
+            try:
+                messagebox.showerror("Error", f"Ocurrió un error al registrar el rostro: {e}")
+            except Exception:
+                pass
     
     def saveChanges(self):
         """Guarda los cambios realizados"""
