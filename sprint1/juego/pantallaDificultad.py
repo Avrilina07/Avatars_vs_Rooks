@@ -12,7 +12,7 @@ carpeta_personalizacion = os.path.join(carpeta_sprint1, 'personalizacion')
 sys.path.insert(0, carpeta_personalizacion)
 
 from constantes import FPS, PANTALLA_COMPLETA
-from componentes import Boton, BotonVolver
+from componentes import Boton
 
 # Importar pantallaJuego desde la misma carpeta
 from pantallaJuego import PantallaJuego
@@ -53,10 +53,6 @@ class PantallaDificultad:
         
         # Crear botones
         self.crearBotones()
-        
-        # Botón volver
-        self.botonVolver = BotonVolver(40, 40)
-        self.actualizarColoresBotonVolver()
     
     def crearBotones(self):
         """Crea los botones de dificultad"""
@@ -89,7 +85,7 @@ class PantallaDificultad:
             },
             {
                 'nombre': 'SALIR',
-                'descripcion': 'Volver al menú',
+                'descripcion': 'Salir del juego',
                 'color_texto': None  # Usará el color por defecto
             }
         ]
@@ -115,13 +111,6 @@ class PantallaDificultad:
             boton.nombre = dif['nombre']
             
             self.botones.append(boton)
-    
-    def actualizarColoresBotonVolver(self):
-        """Actualiza los colores del botón volver según el tema"""
-        self.botonVolver.colorFondo = self.colorFondo.obtenerColorBoton()
-        self.botonVolver.colorHover = self.colorFondo.obtenerColorHoverBoton()
-        self.botonVolver.colorBorde = self.colorFondo.obtenerColorBorde()
-        self.botonVolver.colorTexto = self.colorFondo.obtenerColorTextoBoton()
     
     def manejarEventos(self):
         """Procesa los eventos de entrada"""
@@ -289,34 +278,34 @@ def main():
     
     pygame.display.set_caption("Seleccionar Dificultad - Avatars VS Rooks")
     
-    # Crear y ejecutar pantalla de dificultad con las preferencias cargadas
-    pantalla_dif = PantallaDificultad(pantalla, colorFondo, temaActual)
-    accion, dificultad = pantalla_dif.ejecutar()
-    
-    # Manejar resultado
-    if accion == 'JUGAR':
-        print(f"Iniciando juego con dificultad: {dificultad}")
+    try:
+        # Crear y ejecutar pantalla de dificultad con las preferencias cargadas
+        pantalla_dif = PantallaDificultad(pantalla, colorFondo, temaActual)
+        accion, dificultad = pantalla_dif.ejecutar()
         
-        # Lanzar el juego con la dificultad seleccionada
+        # Manejar resultado
+        if accion == 'JUGAR':
+            print(f"Iniciando juego con dificultad: {dificultad}")
+            
+            # Lanzar el juego con la dificultad seleccionada
+            try:
+                pantallaJuego = PantallaJuego(pantalla, colorFondo, temaActual, dificultad)
+                pantallaJuego.ejecutar()
+            except Exception as e:
+                print(f"Error al iniciar el juego: {e}")
+                import traceback
+                traceback.print_exc()
+    
+    finally:
+        # SIEMPRE pausar música al salir, sin importar cómo se cierre
+        print("DEBUG: Pausando música al cerrar la aplicación")
         try:
-            pantallaJuego = PantallaJuego(pantalla, colorFondo, temaActual, dificultad)
-            pantallaJuego.ejecutar()
+            spotify.pausarMusica()
         except Exception as e:
-            print(f"Error al iniciar el juego: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"Error al pausar música: {e}")
         
-        # Pausar música cuando el juego termine
-        print("DEBUG: Pausando música al cerrar el juego")
-        spotify.pausarMusica()
-        
-    elif accion == 'VOLVER':
-        print("Volviendo al menú principal...")
-        # Pausar música si se vuelve al menú
-        spotify.pausarMusica()
-    
-    pygame.quit()
-    sys.exit()
+        pygame.quit()
+        sys.exit()
 
 
 if __name__ == "__main__":
