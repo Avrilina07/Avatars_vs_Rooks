@@ -154,11 +154,18 @@ class PantallaJuego:
                 self.imagenes_torres[nombre] = pygame.image.load(ruta).convert_alpha()
 
             # --- PROYECTILES ---
+            # Se asume que los nombres de los archivos de proyectiles son T1.png, T2.png, etc.
+            # Sin embargo, el código original usa nombres largos, los mantendré aquí:
             mapa_proyectiles = {
                 "T1": "Ataque_arena", "T2": "Ataque_roca",
                 "T3": "Ataque_fuego", "T4": "Ataque_agua"
             }
+            # *** NOTA IMPORTANTE: Si los proyectiles se llaman T1.png, T2.png, etc.
+            # *** Debes cambiar el mapeo arriba a:
+            # *** mapa_proyectiles = {"T1": "T1", "T2": "T2", ...} 
+            
             for tipo_torre, nombre_archivo in mapa_proyectiles.items():
+                # El archivo de imagen se llama Ataque_arena.png, Ataque_roca.png, etc.
                 ruta = os.path.join(ruta_base, f"{nombre_archivo}.png")
                 self.imagenes_proyectiles[tipo_torre] = pygame.image.load(ruta).convert_alpha()
 
@@ -650,27 +657,6 @@ class PantallaJuego:
                         x = gridX + columna * anchoCasilla + anchoCasilla / 2
                         y = gridY + fila * altoCasilla + altoCasilla / 2
                         pygame.draw.circle(self.pantalla, color, (int(x), int(y)), 25)
-
-    def dibujarGridDebug(self):
-        """Dibuja el grid de debug"""
-        colorGrid = (255, 0, 0) 
-        grosor = 3
-        
-        gridX = self.tableroX + self.gridOffsetX
-        gridY = self.tableroY + self.gridOffsetY
-        
-        anchoCasillaGrid = self.anchoCasilla + self.gridAnchoExtra
-        altoCasillaGrid = self.altoCasilla + self.gridAltoExtra
-        
-        for col in range(self.columnas + 1):
-            x = int(gridX + (col * anchoCasillaGrid))
-            pygame.draw.line(self.pantalla, colorGrid, (x, gridY), 
-                            (x, int(gridY + (self.filas * altoCasillaGrid))), grosor)
-        
-        for fila in range(self.filas + 1):
-            y = int(gridY + (fila * altoCasillaGrid))
-            pygame.draw.line(self.pantalla, colorGrid, (gridX, y), 
-                            (int(gridX + (self.columnas * anchoCasillaGrid)), y), grosor)
         
     def dibujar(self):
         """Dibuja todos los elementos en pantalla (Un solo frame)"""
@@ -690,7 +676,6 @@ class PantallaJuego:
         # 2. Tablero, grid
         if self.imagenTablero:
             self.pantalla.blit(self.imagenTablero, (self.tableroX, self.tableroY))
-        self.dibujarGridDebug()
         
         # 3. Dibujo de Torres/Avatars
         if self.estadoJuego == "CONFIGURACION":
