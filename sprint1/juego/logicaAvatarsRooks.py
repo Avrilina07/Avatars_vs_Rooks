@@ -1,798 +1,692 @@
-# ---MANEJO DE TODA LA LÓGICA DE FUNCIONAMIENTO DE AVATARS Y TORRES---
+# --- MANEJO DE TODA LA LÓGICA DE FUNCIONAMIENTO DE AVATARS Y TORRES ---
 
 import pygame
 import random
-from clasesAvatarsRooks import Avatars, Rooks
+from clasesAvatarsRooks import Avatars, Rooks 
 
 
 class Proyectil:
     """Representa un proyectil disparado por un avatar o torre"""
     
-    def __init__(self, x, y, daño, tipo, esAvatar=True):
+    def __init__(self, x, y, daño, tipo, esAvatar=True, imagenes=None):
         self.x = x
         self.y = y
         self.daño = daño
         self.tipo = tipo
         self.activo = True
-        self.esAvatar = esAvatar  # True si lo disparó un avatar, False si fue una torre
+        self.esAvatar = esAvatar
         
-        # Velocidad del proyectil (dirección opuesta según quién dispara)
-        self.velocidad = -5 if esAvatar else 5  # Avatars hacia arriba (-), Torres hacia abajo (+)
+        self.velocidad = -5 if esAvatar else 5
+        self.radio = 5 
         
-        self.radio = 5
-    
+        # Configuración de imagen (solo para proyectiles de torre)
+        self.imagen = None
+        if not self.esAvatar and imagenes:
+            # ✅ CORRECCIÓN FINAL: Se asume que la clave de la imagen es el TIPO de la torre ("T1", "T2", etc.)
+            self.imagen = imagenes.get(self.tipo) 
+            if self.imagen:
+                self.imagen = pygame.transform.scale(self.imagen, (10, 10)) 
+
     def actualizar(self):
-        """Mueve el proyectil"""
+        """Mueve el proyectil y verifica límites de pantalla"""
         if self.activo:
             self.y += self.velocidad
             
-            # Desactivar si sale de pantalla (ajustar según tu altura de pantalla)
-            if self.y < 0 or self.y > 900:
+            # Arreglo de límite de pantalla
+            if self.y < 0 or self.y > 900: 
                 self.activo = False
+        
+        # 🗑️ Se eliminó el bloque de código 'actualizar' duplicado que causó el error de indentación anterior.
     
     def dibujar(self, pantalla):
-        """Dibuja el proyectil"""
+        """Dibuja el proyectil, usando imagen si existe, o círculo por defecto"""
         if not self.activo:
             return
         
-        # Colores para avatars
-        coloresAvatars = {
-            "flechador": (255, 215, 0),    # Amarillo dorado
-            "escudero": (100, 149, 237),   # Azul aciano
-            "lenador": (139, 69, 19),      # Marrón
-            "canibal": (220, 20, 60)       # Rojo carmesí
-        }
-        
-        # Colores para torres
-        coloresTorres = {
-            "T1": (255, 235, 150),  # Arena - amarillo claro
-            "T2": (200, 200, 200),  # Roca - gris claro
-            "T3": (255, 140, 0),    # Fuego - naranja oscuro
-            "T4": (0, 191, 255)     # Agua - azul cielo profundo
-        }
-        
-        if self.esAvatar:
-            color = coloresAvatars.get(self.tipo, (255, 255, 255))
+        if self.imagen:
+            # Dibujar imagen centrada
+            rect = self.imagen.get_rect(center=(int(self.x), int(self.y)))
+            pantalla.blit(self.imagen, rect)
         else:
-            color = coloresTorres.get(self.tipo, (255, 255, 255))
-        
-        pygame.draw.circle(pantalla, color, (int(self.x), int(self.y)), self.radio)
-        pygame.draw.circle(pantalla, (0, 0, 0), (int(self.x), int(self.y)), self.radio, 1)
-    
+            # Dibujo por defecto (proyectiles de avatars y torres sin imagen)
+            if self.esAvatar:
+                colores = {
+                    "flechador": (255, 215, 0), "escudero": (100, 149, 237),
+                    "lenador": (139, 69, 19), "canibal": (220, 20, 60)
+                }
+            else: # Colores por defecto para proyectiles de torre si no hay imagen
+                 colores = {
+                    "T1": (194, 178, 128), "T2": (128, 128, 128),  
+                    "T3": (255, 100, 0), "T4": (0, 100, 255)    
+                }
+
+            color = colores.get(self.tipo, (255, 255, 255))
+            pygame.draw.circle(pantalla, color, (int(self.x), int(self.y)), self.radio)
+            pygame.draw.circle(pantalla, (0, 0, 0), (int(self.x), int(self.y)), self.radio, 1)
+            
     def colisionaConTorre(self, torre):
-        """Verifica colisión con una torre (solo proyectiles de avatars)"""
-        if not self.activo or not torre.viva or not self.esAvatar:
-            return False
-        
-        radioTorre = 25
-        distancia = ((self.x - torre.x)**2 + (self.y - torre.y)**2)**0.5
-        return distancia < (self.radio + radioTorre)
-    
+        """Verifica si el proyectil colisiona con una torre (solo si es de Avatar)"""
+        if self.esAvatar and torre.viva:
+            distancia = ((self.x - torre.x) ** 2 + (self.y - torre.y) ** 2) ** 0.5
+            return distancia < self.radio + 25 
+        return False
+
     def colisionaConAvatar(self, avatar):
-        """Verifica colisión con un avatar (solo proyectiles de torres)"""
-        if not self.activo or not avatar.vivo or self.esAvatar:
-            return False
-        
-        radioAvatar = 20
-        distancia = ((self.x - avatar.x)**2 + (self.y - avatar.y)**2)**0.5
-        return distancia < (self.radio + radioAvatar)
+        """Verifica si el proyectil colisiona con un avatar (solo si es de Torre)"""
+        if not self.esAvatar and avatar.vivo and not avatar.apareciendo:
+            distancia = ((self.x - avatar.x) ** 2 + (self.y - avatar.y) ** 2) ** 0.5
+            return distancia < self.radio + 20
+        return False
 
 
 class Avatar:
     """Representa un avatar enemigo que avanza hacia arriba"""
     
-    def __init__(self, tipo, fila, columna, datosAvatar, gridConfig):
+    # Mapeo de tipo de avatar a nombre base de archivo de imagen
+    AVATAR_IMAGEN_MAP = {
+        "flechador": "Arco",
+        "escudero": "escudo",
+        "lenador": "hacha",
+        "canibal": "bate" 
+    }
+
+    def __init__(self, tipo, fila, columna, datosAvatar, gridConfig, avatar_imagenes=None):
 
         self.tipo = tipo
         self.fila = fila
         self.columna = columna
         
-        # Estadísticas del avatar
         self.vidaMax = datosAvatar["vida"]
         self.vidaActual = datosAvatar["vida"]
         self.daño = datosAvatar["daño"]
         self.duracionAparicion = datosAvatar["duracion_aparicion"]  
-        
-        # Cada avatar tiene su propio tiempo de ataque aleatorio
         self.duracionAtaque = random.randint(
             datosAvatar.get("duracion_ataque_min", 1),
             datosAvatar.get("duracion_ataque_max", 5)
         )
-        
-        print(f"🎯 {tipo} creado con duracion_ataque = {self.duracionAtaque}s")
-        
-        # Estado del avatar
         self.vivo = True
-        self.apareciendo = True  # Estado de aparición
-        self.tiempoAparicion = 0  # Contador para animación de aparición
-        self.tiempoDesdeUltimoDisparo = 0  # Contador para disparar
+        self.apareciendo = True  
+        self.tiempoAparicion = 0
+        self.tiempoDesdeUltimoDisparo = 0 
         
-        # Posición visual (calculada desde el grid)
         self.calcularPosicion(gridConfig)
-        
-        # velocidad fija
-        self.velocidad = 0.5  # Píxeles por frame (ajustar si es muy lento/rápido)
-        
-        # Lista de proyectiles disparados por este avatar
+        self.velocidad = 0.5 
         self.proyectiles = []
-        
-        # Guardar configuración del grid
         self.gridConfig = gridConfig
-        # Puntos que otorga este avatar al morir
         self.puntos = datosAvatar.get("puntos", 0)
-    
+        
+        # Carga y animación de imágenes
+        self.imagenes = []
+        self.frameActual = 0
+        self.contadorAnimacion = 0
+        self.velocidadAnimacion = 8 
+        
+        nombre_base = self.AVATAR_IMAGEN_MAP.get(self.tipo)
+        if nombre_base and avatar_imagenes:
+            img1 = avatar_imagenes.get(f"Avatar_{nombre_base}_1")
+            img2 = avatar_imagenes.get(f"Avatar_{nombre_base}_2")
+            
+            # MODIFICACIÓN AQUÍ: Aumentar el tamaño del avatar
+            radio_visual = 70
+            
+            if img1:
+                img1 = pygame.transform.scale(img1, (radio_visual, radio_visual))
+                self.imagenes.append(img1)
+            if img2:
+                img2 = pygame.transform.scale(img2, (radio_visual, radio_visual))
+                self.imagenes.append(img2)
+
     def calcularPosicion(self, gridConfig):
-        """Calcula la posición visual del avatar en el grid"""
+        """Calcula la posición visual central en la casilla"""
         gridX = gridConfig["gridX"]
         gridY = gridConfig["gridY"]
         anchoCasilla = gridConfig["anchoCasilla"]
         altoCasilla = gridConfig["altoCasilla"]
         
-        # Posición centrada en la casilla
-        self.x = gridX + (self.columna * anchoCasilla) + (anchoCasilla / 2)
-        self.y = gridY + (self.fila * altoCasilla) + (altoCasilla / 2)
+        self.x = gridX + self.columna * anchoCasilla + anchoCasilla / 2
+        self.y = gridY + self.fila * altoCasilla + altoCasilla / 2
+
+    def mover(self, fps):
+        """Avanza una casilla si es posible"""
+        self.y -= self.velocidad 
         
-        # Guardar dimensiones de casilla para movimiento
-        self.anchoCasilla = anchoCasilla
-        self.altoCasilla = altoCasilla
-    
-    def actualizar(self, fps, torres=None):
-        """
-        Actualiza el estado del avatar
+        gridY = self.gridConfig["gridY"]
+        altoCasilla = self.gridConfig["altoCasilla"]
+        centroYObjetivo = gridY + (self.fila - 1) * altoCasilla + altoCasilla / 2
         
-        Args:
-            fps: frames por segundo del juego (para calcular tiempos)
-            torres: list de objetos Torre (opcional, para detectar colisiones)
-        """
+        if self.y <= centroYObjetivo:
+            self.fila -= 1
+            self.y = centroYObjetivo
+            self.velocidad = 0.5 
+            return True 
+        
+        return False
+
+    def moverConColision(self, torres):
+        """Mueve el avatar y verifica si choca con alguna torre en su misma columna"""
+        
+        if self.fila == 0 or self.apareciendo:
+            return
+        
+        torre_bloqueando = None
+        for torre in torres:
+            if torre.fila == self.fila - 1 and torre.columna == self.columna and torre.viva:
+                torre_bloqueando = torre
+                break
+        
+        if torre_bloqueando:
+            distancia_minima = 25 + 25 # Radio de avatar (25) + radio de torre (25, ajustado abajo)
+            
+            if self.y - torre_bloqueando.y > distancia_minima:
+                self.y -= self.velocidad
+            
+            self.actualizarDisparo(torre_bloqueando, self.gridConfig)
+            
+        else:
+            self.mover(60) 
+
+    def actualizar(self, torres):
+        """Actualiza el estado del avatar (incluyendo animación)"""
         if not self.vivo:
             return
+        
+        # Lógica de animación
+        if not self.apareciendo and self.imagenes:
+            self.contadorAnimacion += 1
+            if self.contadorAnimacion >= self.velocidadAnimacion:
+                self.frameActual = (self.frameActual + 1) % len(self.imagenes)
+                self.contadorAnimacion = 0
         
         # Fase de aparición
         if self.apareciendo:
             self.tiempoAparicion += 1
-            
-            # Convertir duracion_aparicion (segundos) a frames
-            if self.tiempoAparicion >= 3 * fps:
+            if self.tiempoAparicion >= 3 * 60: 
                 self.apareciendo = False
-                print(f"✨ {self.tipo} terminó de aparecer en columna {self.columna}")
-            return  # No se mueve ni dispara durante aparición
+            return 
         
-        # Movimiento hacia arriba (solo si no hay colisión con torre)
-        if torres:
-            self.moverConColision(torres)
-        else:
-            self.mover()
-        
-        # Sistema de disparo
-        self.actualizarDisparo(fps)
-        
+        # Movimiento
+        self.moverConColision(torres)
+
         # Actualizar proyectiles
         for proyectil in self.proyectiles[:]:
             proyectil.actualizar()
             if not proyectil.activo:
                 self.proyectiles.remove(proyectil)
-    
-    def mover(self):
-        """Mueve el avatar hacia arriba"""
-        self.y -= self.velocidad  # Negativo = hacia arriba
-        
-        # Actualizar posición en la matriz cuando cambia de casilla
-        gridY = self.gridConfig["gridY"]
-        filaActual = int((self.y - gridY) / self.altoCasilla)
-        
-        if filaActual != self.fila and filaActual >= 0:
-            self.fila = filaActual
-    
-    def moverConColision(self, torres):
-        
-        """Mueve el avatar hacia arriba, pero se detiene si colisiona con una torre"""
-        
-        # Guardar posición actual
-        yAnterior = self.y
-        
-        # Intentar moverse
-        self.y -= self.velocidad
-        
-        # Verificar colisión con torres
-        for torre in torres:
-            if not torre.viva:
-                continue
-            
-            # Verificar si avatar colisiona con torre
-            radioAvatar = 20
-            radioTorre = 25
-            distancia = ((self.x - torre.x)**2 + (self.y - torre.y)**2)**0.5
-            
-            if distancia < (radioAvatar + radioTorre):
-                # Colisión detectada: restaurar posición anterior
-                self.y = yAnterior
-                print(f"🚫 {self.tipo} bloqueado por torre {torre.tipo} en ({torre.fila}, {torre.columna})")
-                return  # No actualizar fila
-        
-        # Si no hubo colisión, actualizar posición en la matriz
-        gridY = self.gridConfig["gridY"]
-        filaActual = int((self.y - gridY) / self.altoCasilla)
-        
-        if filaActual != self.fila and filaActual >= 0:
-            self.fila = filaActual
-    
-    def actualizarDisparo(self, fps):
-        """Maneja el sistema de disparo del avatar"""
+
+    def actualizarDisparo(self, objetivo, gridConfig):
+        """Controla el tiempo de espera entre disparos y dispara"""
         self.tiempoDesdeUltimoDisparo += 1
         
-        # Para duración de ataque del avatar
-        framesPorDisparo = self.duracionAtaque * fps
+        framesPorAtaque = self.duracionAtaque * 60 
         
-        if self.tiempoDesdeUltimoDisparo >= framesPorDisparo:
+        if self.tiempoDesdeUltimoDisparo >= framesPorAtaque:
             self.disparar()
             self.tiempoDesdeUltimoDisparo = 0
-    
-    def disparar(self):
-        """Crea un proyectil que va hacia arriba"""
-        proyectil = Proyectil(self.x, self.y, self.daño, self.tipo)
-        self.proyectiles.append(proyectil)
-        print(f"🏹 {self.tipo} disparó desde fila {self.fila} (cada {self.duracionAtaque}s)")
-    
-    def recibirDaño(self, daño):
-        """Recibe daño y verifica si muere"""
-        self.vidaActual -= daño
-        
-        if self.vidaActual <= 0:
-            self.vivo = False
-            print(f"💀 {self.tipo} eliminado en fila {self.fila}")
-            # Retornar los puntos que otorga al morir
-            return self.puntos
 
-        # Si no murió, retornar 0 puntos
+    def disparar(self):
+        """Crea un proyectil"""
+        # Los proyectiles de avatar (esAvatar=True) ya se mueven hacia arriba (velocidad = -5)
+        proyectil = Proyectil(self.x, self.y, self.daño, self.tipo, esAvatar=True)
+        self.proyectiles.append(proyectil)
+        
+    def recibirDaño(self, daño):
+        """Reduce la vida y verifica si muere"""
+        self.vidaActual -= daño
+        if self.vidaActual <= 0:
+            self.vidaActual = 0
+            self.vivo = False
+            return self.puntos
         return 0
-    
+
+    def dibujarBarraVida(self, pantalla, radio):
+        """Dibuja la barra de vida sobre el avatar"""
+        if self.vidaActual == self.vidaMax:
+            return
+
+        anchoBarra = radio * 2
+        altoBarra = 5
+        
+        # Fondo rojo
+        barraFondo = pygame.Rect(self.x - anchoBarra / 2, self.y - radio - 10, anchoBarra, altoBarra)
+        pygame.draw.rect(pantalla, (255, 0, 0), barraFondo)
+
+        # Vida verde
+        anchoVida = (self.vidaActual / self.vidaMax) * anchoBarra
+        barraVida = pygame.Rect(self.x - anchoBarra / 2, self.y - radio - 10, anchoVida, altoBarra)
+        pygame.draw.rect(pantalla, (0, 255, 0), barraVida)
+
     def dibujar(self, pantalla):
-        """Dibuja el avatar y sus proyectiles"""
+        """Dibuja el avatar y sus proyectiles, usando imagen si existe"""
         if not self.vivo:
             return
         
-        # Colores de avatars
-        colores = {
-            "flechador": (255, 215, 0),    # Amarillo dorado
-            "escudero": (100, 149, 237),   # Azul aciano
-            "lenador": (139, 69, 19),      # Marrón silla de montar
-            "canibal": (220, 20, 60)       # Rojo carmesí
-        }
+        radio = 25 # Este es el radio para el dibujo de los círculos (si no hay imagen), no para la imagen.
         
-        # Usar get() con color por defecto blanco si no encuentra
-        color = colores.get(self.tipo, (255, 255, 255))
-        
-        # Imprimir para debug (quitar después)
-        if color == (255, 255, 255):
-            print(f"⚠️ Avatar tipo '{self.tipo}' no tiene color asignado")
-        
-        # Tamaño del avatar
-        radio = 20
-        
-        if self.apareciendo:
-            # Efecto de pulsación durante aparición
-            progreso = self.tiempoAparicion / (self.duracionAparicion * 60)  # 0.0 a 1.0
-            radioAparicion = int(radio * progreso)
+        if self.imagenes:
+            imagen_a_dibujar = self.imagenes[self.frameActual % len(self.imagenes)]
+            rect = imagen_a_dibujar.get_rect(center=(int(self.x), int(self.y)))
             
-            if radioAparicion > 0:
-                pygame.draw.circle(pantalla, color, (int(self.x), int(self.y)), radioAparicion)
-                pygame.draw.circle(pantalla, (255, 255, 255), (int(self.x), int(self.y)), radioAparicion, 2)
+            if self.apareciendo:
+                progreso = self.tiempoAparicion / (3 * 60) 
+                progreso = min(1.0, progreso)
+                alpha = int(255 * progreso)
+                imagen_a_dibujar.set_alpha(alpha)
+                pantalla.blit(imagen_a_dibujar, rect)
+            else:
+                imagen_a_dibujar.set_alpha(255) 
+                pantalla.blit(imagen_a_dibujar, rect)
+            
+            if not self.apareciendo:
+                # Pasar el radio visual que se usó para escalar la imagen
+                self.dibujarBarraVida(pantalla, 25) # Asumiendo que 25 es el radio efectivo para la barra de vida
         else:
-            # Dibujar avatar
-            pygame.draw.circle(pantalla, color, (int(self.x), int(self.y)), radio)
-            pygame.draw.circle(pantalla, (255, 255, 255), (int(self.x), int(self.y)), radio, 2)
+            colores = {
+                "flechador": (255, 215, 0), "escudero": (100, 149, 237),
+                "lenador": (139, 69, 19), "canibal": (220, 20, 60)
+            }
+            color = colores.get(self.tipo, (255, 255, 255))
             
-            # Dibujar barra de vida
-            self.dibujarBarraVida(pantalla, radio)
+            if self.apareciendo:
+                 pass
+            else:
+                pygame.draw.circle(pantalla, color, (int(self.x), int(self.y)), radio)
+                pygame.draw.circle(pantalla, (255, 255, 255), (int(self.x), int(self.y)), radio, 2)
+                self.dibujarBarraVida(pantalla, radio)
         
         # Dibujar proyectiles
         for proyectil in self.proyectiles:
             proyectil.dibujar(pantalla)
-    
-    def dibujarBarraVida(self, pantalla, radio):
-        """Dibuja barra de vida sobre el avatar"""
-        anchoBarraMax = radio * 2
-        altoBarraVida = 5
-        
-        # Posición de la barra (encima del avatar)
-        x = self.x - radio
-        y = self.y - radio - 10
-        
-        # Calcular porcentaje de vida
-        porcentajeVida = max(0, self.vidaActual / self.vidaMax)
-        anchoBarraActual = anchoBarraMax * porcentajeVida
-        
-        # Fondo de la barra (rojo)
-        pygame.draw.rect(pantalla, (255, 0, 0), 
-                        (x, y, anchoBarraMax, altoBarraVida))
-        
-        # Barra de vida actual (verde)
-        pygame.draw.rect(pantalla, (0, 255, 0), 
-                        (x, y, anchoBarraActual, altoBarraVida))
-        
-        # Borde
-        pygame.draw.rect(pantalla, (255, 255, 255), 
-                        (x, y, anchoBarraMax, altoBarraVida), 1)
-    
+
     def llegoPantallaArriba(self):
-        """Verifica si el avatar llegó a la parte superior (derrota)"""
-        # Límite superior del grid
-        limiteY = self.gridConfig["gridY"]
-        return self.y <= limiteY
+        """Verifica si el avatar llegó a la fila superior (fila 0)"""
+        return self.fila == 0
 
 
 class Torre:
     """Representa una torre colocada en el tablero"""
     
-    def __init__(self, tipo, fila, columna, datosTorre, gridConfig):
+    # Mapeo de 'tipo' a nombre de archivo (usado para cargar la imagen de la torre)
+    TORRE_IMAGEN_MAP = {
+        "T1": "Torre_arena",
+        "T2": "Torre_roca",
+        "T3": "Torre_fuego",
+        "T4": "Torre_agua"
+    }
+    
+    def __init__(self, tipo, fila, columna, datosTorre, gridConfig, torre_imagenes=None):
 
         self.tipo = tipo
         self.fila = fila
         self.columna = columna
         
-        # Estadísticas de la torre
         self.vidaMax = datosTorre["vida"]
         self.vidaActual = datosTorre["vida"]
         self.daño = datosTorre["daño"]
         self.valor = datosTorre["valor"]
-        
-        # Valor random para cada torre
         self.duracionAtaque = random.randint(
             datosTorre.get("duracion_ataque_min", 1),
             datosTorre.get("duracion_ataque_max", 5)
         )
         
-        # Estado
         self.viva = True
         self.tiempoAtaque = 0
-        
-        # ⬅️ NUEVO: Lista de proyectiles
         self.proyectiles = []
-        
-        # Calcular posición visual
+        self.rangoAtaque = 1 
+
+        # Cargar imagen de la torre
+        self.imagen = None
+        nombre_base = self.TORRE_IMAGEN_MAP.get(self.tipo)
+        if nombre_base and torre_imagenes:
+            self.imagen = torre_imagenes.get(nombre_base)
+            if self.imagen:
+                # MODIFICACIÓN AQUÍ: Aumentar el tamaño de la torre
+                radio_visual = 90
+                self.imagen = pygame.transform.scale(self.imagen, (radio_visual, radio_visual))
+
         self.calcularPosicion(gridConfig)
-        
-        print(f"🏰 Torre {tipo} creada en ({fila}, {columna}) - Ataque cada {self.duracionAtaque}s")
-    
+
     def calcularPosicion(self, gridConfig):
-        
-        """Calcula posición visual en el grid"""
-        
+        """Calcula la posición visual central en la casilla"""
         gridX = gridConfig["gridX"]
         gridY = gridConfig["gridY"]
         anchoCasilla = gridConfig["anchoCasilla"]
         altoCasilla = gridConfig["altoCasilla"]
         
-        self.x = gridX + (self.columna * anchoCasilla) + (anchoCasilla / 2)
-        self.y = gridY + (self.fila * altoCasilla) + (altoCasilla / 2)
-    
-    def actualizar(self, avatars, fps):
-        """Actualiza la torre (dispara proyectiles a avatars en rango)"""
-        if not self.viva:
-            return
-        
-        # Actualizar proyectiles existentes
-        for proyectil in self.proyectiles[:]:
-            proyectil.actualizar()
-            if not proyectil.activo:
-                self.proyectiles.remove(proyectil)
-        
-        # Buscar avatars en rango
-        avatarsEnRango = []
-        for avatar in avatars:
-            if not avatar.vivo or avatar.apareciendo:
-                continue
-            
-            if self.dentroRango(avatar):
-                avatarsEnRango.append(avatar)
-        
-        # Si hay avatars, disparar al más cercano
-        if avatarsEnRango:
-            avatarsEnRango.sort(key=lambda a: abs(a.fila - self.fila))
-            self.atacar(avatarsEnRango[0], fps)
-    
-    def atacar(self, avatar, fps):
-        """Dispara un proyectil hacia el avatar"""
-        self.tiempoAtaque += 1
-        
-        framesPorAtaque = self.duracionAtaque * fps
-        
-        if self.tiempoAtaque >= framesPorAtaque:
-            # Crear proyectil
-            proyectil = Proyectil(self.x, self.y, self.daño, self.tipo, esAvatar=False)
-            self.proyectiles.append(proyectil)
-            
-            self.tiempoAtaque = 0
-            print(f"🏹 Torre {self.tipo} ({self.fila}, {self.columna}) disparó a {avatar.tipo}")
-    
+        self.x = gridX + self.columna * anchoCasilla + anchoCasilla / 2
+        self.y = gridY + self.fila * altoCasilla + altoCasilla / 2
+
     def dentroRango(self, avatar):
-        """Verifica si un avatar está en la misma columna que la torre"""
-        # Las torres solo atacan avatars de su columna
-        return self.columna == avatar.columna
-    
+        """Verifica si un avatar está dentro del rango de ataque (cualquier casilla inferior en la misma columna)"""
+        # El avatar debe estar en la misma columna Y en una fila MAYOR (más abajo) que la torre.
+        return avatar.columna == self.columna and avatar.fila > self.fila
+            
     def recibirDaño(self, daño):
-        """Recibe daño de proyectiles"""
+        """Reduce la vida y verifica si muere"""
         self.vidaActual -= daño
-        
         if self.vidaActual <= 0:
+            self.vidaActual = 0
             self.viva = False
-            print(f"💥 Torre {self.tipo} destruida en ({self.fila}, {self.columna})")
-            return True
+
+    def dibujarBarraVida(self, pantalla, radio):
+        """Dibuja la barra de vida sobre la torre"""
+        if self.vidaActual == self.vidaMax:
+            return
+
+        anchoBarra = radio * 2
+        altoBarra = 5
         
-        return False
-    
+        # Fondo rojo
+        barraFondo = pygame.Rect(self.x - anchoBarra / 2, self.y - radio - 10, anchoBarra, altoBarra)
+        pygame.draw.rect(pantalla, (255, 0, 0), barraFondo)
+
+        # Vida verde
+        anchoVida = (self.vidaActual / self.vidaMax) * anchoBarra
+        barraVida = pygame.Rect(self.x - anchoBarra / 2, self.y - radio - 10, anchoVida, altoBarra)
+        pygame.draw.rect(pantalla, (0, 255, 0), barraVida)
+
     def dibujar(self, pantalla):
-        """Dibuja la torre y sus proyectiles.
-        Los siguientes datos se pueden modificar para añadir las imágenes finales para el juego"""
+        """Dibuja la torre y sus proyectiles, usando imagen si existe"""
         if not self.viva:
             return
         
-        # Colores por tipo de torre
-        colores = {
-            "T1": (194, 178, 128),  # Arena (beige)
-            "T2": (128, 128, 128),  # Roca (gris)
-            "T3": (255, 100, 0),    # Fuego (naranja)
-            "T4": (0, 100, 255)     # Agua (azul)
-        }
+        radio = 30 # Este es el radio para el dibujo de los círculos (si no hay imagen), no para la imagen.
         
-        color = colores.get(self.tipo, (255, 255, 255))
-        
-        # Tamaño de la torre
-        radio = 25
-        
-        # Dibujar torre
-        pygame.draw.circle(pantalla, color, (int(self.x), int(self.y)), radio)
-        pygame.draw.circle(pantalla, (0, 0, 0), (int(self.x), int(self.y)), radio, 3)
-        
-        # Dibujar barra de vida
-        self.dibujarBarraVida(pantalla, radio)
-        
-        # Dibujar rango de ataque (opcional para debug) (quitar el # al siguiente comentario si se quiere aplicar)
-        # self.dibujarRangoAtaque(pantalla)
+        if self.imagen:
+            rect = self.imagen.get_rect(center=(int(self.x), int(self.y)))
+            pantalla.blit(self.imagen, rect)
+            
+            # Pasar el radio visual que se usó para escalar la imagen
+            self.dibujarBarraVida(pantalla, 30) # Asumiendo que 30 es el radio efectivo para la barra de vida
+        else:
+            # Dibujar el círculo por defecto
+            colores = {
+                "T1": (194, 178, 128), "T2": (128, 128, 128),  
+                "T3": (255, 100, 0), "T4": (0, 100, 255)    
+            }
+            color = colores.get(self.tipo, (255, 255, 255))
+            pygame.draw.circle(pantalla, color, (int(self.x), int(self.y)), radio)
+            pygame.draw.circle(pantalla, (0, 0, 0), (int(self.x), int(self.y)), radio, 3)
+            self.dibujarBarraVida(pantalla, radio)
         
         # Dibujar proyectiles
         for proyectil in self.proyectiles:
             proyectil.dibujar(pantalla)
-    
-    def dibujarBarraVida(self, pantalla, radio):
-        """Dibuja barra de vida sobre la torre"""
-        anchoBarraMax = radio * 2
-        altoBarraVida = 6
-        
-        x = self.x - radio
-        y = self.y - radio - 15
-        
-        porcentajeVida = max(0, self.vidaActual / self.vidaMax)
-        anchoBarraActual = anchoBarraMax * porcentajeVida
-        
-        # Fondo (rojo)
-        pygame.draw.rect(pantalla, (255, 0, 0), (x, y, anchoBarraMax, altoBarraVida))
-        
-        # Vida actual (verde)
-        pygame.draw.rect(pantalla, (0, 255, 0), (x, y, anchoBarraActual, altoBarraVida))
-        
-        # Borde
-        pygame.draw.rect(pantalla, (255, 255, 255), (x, y, anchoBarraMax, altoBarraVida), 2)
-    
-    def dibujarRangoAtaque(self, pantalla):
-        """Dibuja el rango de ataque (para debug)"""
-        # Calcular el área del rango
-        gridX = self.gridConfig.get("gridX", 0)
-        gridY = self.gridConfig.get("gridY", 0)
-        anchoCasilla = self.gridConfig.get("anchoCasilla", 100)
-        altoCasilla = self.gridConfig.get("altoCasilla", 100)
-        
-        # Dibujar rectángulo del rango
-        x1 = gridX + (self.columna - self.rangoAtaque) * anchoCasilla
-        y1 = gridY + (self.fila - self.rangoAtaque) * altoCasilla
-        ancho = (2 * self.rangoAtaque + 1) * anchoCasilla
-        alto = (2 * self.rangoAtaque + 1) * altoCasilla
-        
-        pygame.draw.rect(pantalla, (255, 255, 0), (x1, y1, ancho, alto), 2)
 
 
 class GestorAvatars:
     """Gestiona la aparición, movimiento y ataques de todos los avatars"""
     
-    def __init__(self, gridConfig, dificultad="Facil", fps=60):
-
+    def __init__(self, gridConfig, dificultad="Facil", fps=60, avatar_imagenes=None, proyectil_imagenes=None):
+        
         self.gridConfig = gridConfig
         self.fps = fps
         self.avatarsActivos = []
         
-        # Config por dificultad
         self.dificultad = dificultad
         self.configurarDificultad()
-        
-        # Estado del juego
         self.juegoActivo = False
         self.jugadorPerdio = False
         self.jugadorGano = False
         self.causaResultado = ""
-        
-        # Temporizador de partida
-        self.tiempoTranscurrido = 0  # En frames
-        self.tiempoLimiteFrames = self.tiempoLimite * fps  # Convertir a frames
-        
-        # Control de spawn
+        self.tiempoTranscurrido = 0
+        self.tiempoLimiteFrames = self.tiempoLimite * fps
         self.tiempoSpawn = 0
-        
-        # ← AGREGADO: acumuladores de puntos y conteo de avatars eliminados
-        self.puntosGanados = 0  # Acumulador de puntos del frame actual
+        self.puntosGanados = 0
         self.avatarsMatados = 0
         
-        # Instanciar clase Avatars para obtener datos
         self.datosAvatars = Avatars()
         
-        # Probabilidades de aparición (puede modificarse o eliminarse según preferencia del cliente)
-        self.probabilidades = {
-            "flechador": 40,
-            "escudero": 30,
-            "lenador": 20,
-            "canibal": 10
+        # Guardar referencias a las imágenes
+        self.avatar_imagenes = avatar_imagenes
+        self.proyectil_imagenes = proyectil_imagenes
+        
+        self.probabilidades = { 
+            "flechador": 0.4, "escudero": 0.3, 
+            "lenador": 0.2, "canibal": 0.1
         }
-    
+        
     def configurarDificultad(self):
-        """Configura parámetros según la dificultad"""
-        configuraciones = {
+        """Configura los parámetros de tiempo y spawn según la dificultad."""
+        
+        # Tiempo de la partida en segundos
+        tiempo_base = 60 # 60 segundos para la partida
+
+        if self.dificultad == "FÁCIL":
+            self.tiempoLimite = tiempo_base * 1.5 
+            self.spawnMin = 4
+            self.spawnMax = 7
+        elif self.dificultad == "MEDIO":
+            self.tiempoLimite = tiempo_base
+            self.spawnMin = 3
+            self.spawnMax = 5
+        elif self.dificultad == "DIFÍCIL":
+            self.tiempoLimite = tiempo_base * 0.8 
+            self.spawnMin = 2
+            self.spawnMax = 4
+        else:
+            self.tiempoLimite = tiempo_base
+            self.spawnMin = 3
+            self.spawnMax = 5
             
-            # Intervalos de spawn ya calculados para no calcularlos cada vez que se necesite
-            # Sujeto a cambios según gusto del cliente
-            
-            "Facil": {
-                "tiempoLimite": 90,      # 1:30 minutos
-                "intervaloSpawn": 3.0    # 3 segundos base
-            },
-            "Intermedio": {
-                "tiempoLimite": 120,     # 2:00 minutos
-                "intervaloSpawn": 2.4    # 3 * 0.80 = 2.4 segundos (spawn 25% más rápido)
-            },
-            "Dificil": {
-                "tiempoLimite": 150,     # 2:30 minutos
-                "intervaloSpawn": 1.92   # 2.4 * 0.80 = 1.92 segundos (spawn 50% más rápido que Fácil)
-            }
-        }
-        
-        config = configuraciones.get(self.dificultad, configuraciones["Facil"])
-        
-        self.tiempoLimite = config["tiempoLimite"]
-        self.intervaloSpawn = int(config["intervaloSpawn"] * self.fps)  # Convertir a frames
-        
-        print(f"⚙️ Dificultad: {self.dificultad}")
-        print(f"⏱️ Tiempo límite: {self.tiempoLimite}s ({self.tiempoLimite//60}:{self.tiempoLimite%60:02d})")
-        print(f"👥 Intervalo spawn: {config['intervaloSpawn']:.2f}s")
+        print(f"📊 Dificultad '{self.dificultad}' configurada. Tiempo límite: {self.tiempoLimite}s")
+        print(f"Intervalo de spawn: {self.spawnMin}-{self.spawnMax} segundos.")
     
     def iniciar(self):
-        """Inicia el sistema de spawneo"""
         self.juegoActivo = True
         self.tiempoTranscurrido = 0
-        print(f"🎮 Juego iniciado - {self.dificultad}")
-    
-    def actualizar(self, torres):
+        self.tiempoLimiteFrames = self.tiempoLimite * self.fps
+        self.tiempoSpawn = 0
         
-        """Actualiza todos los avatars y sus proyectiles"""
-        
-        if not self.juegoActivo:
-            return
-        
-        # Actualiza temporizador
-        self.tiempoTranscurrido += 1
-        
-        # Verifica victoria
-        if self.tiempoTranscurrido >= self.tiempoLimiteFrames:
-            self.jugadorGano = True
-            self.causaResultado = f"¡Sobreviviste {self.tiempoLimite}s!"
-            self.juegoActivo = False
-            print(f"🎉 ¡VICTORIA! {self.causaResultado}")
-            return
-        
-        # Spawn de nuevos avatars
-        self.actualizarSpawn()
-        
-        # Actualizar cada avatar
-        for avatar in self.avatarsActivos[:]:
-            if not avatar.vivo:
-                self.avatarsActivos.remove(avatar)
-                continue
-            
-            # Actualizar avatar pasando las torres para detección de colisiones
-            avatar.actualizar(self.fps, torres)
-            
-            # Condición de derrota
-            if avatar.llegoPantallaArriba():
-                self.jugadorPerdio = True
-                self.causaResultado = f"Un {avatar.tipo} llegó a la base"
-                self.juegoActivo = False
-                print(f"💀 ¡DERROTA! {self.causaResultado}")
-                return
-        
-        # Verificar colisiones de proyectiles de avatars con torres
-        for avatar in self.avatarsActivos:
-            for proyectil in avatar.proyectiles:
-                for torre in torres:
-                    if proyectil.colisionaConTorre(torre):
-                        torre.recibirDaño(proyectil.daño)
-                        proyectil.activo = False
-                        print(f"💥 Proyectil de {avatar.tipo} impactó torre {torre.tipo}")
-                        break
-        
-        # ← AGREGADO: resetear puntos acumulados en este frame
-        self.puntosGanados = 0
-
-        # Verificar colisiones de proyectiles de torres con avatars
-        for torre in torres:
-            for proyectil in torre.proyectiles:
-                for avatar in self.avatarsActivos:
-                    if proyectil.colisionaConAvatar(avatar):
-                        # Ahora recibirDaño retorna puntos si el avatar murió, 0 si no
-                        puntos = avatar.recibirDaño(proyectil.daño)
-                        proyectil.activo = False
-                        if puntos > 0:
-                            self.puntosGanados += puntos
-                            self.avatarsMatados += 1
-                            print(f"� +{puntos} puntos por eliminar {avatar.tipo}")
-                        else:
-                            print(f"�💥 Proyectil de torre {torre.tipo} impactó {avatar.tipo}")
-                        break
-    
-    def actualizarSpawn(self):
-        """Controla el spawn continuo de avatars"""
-        # Incrementar contador de spawn
-        self.tiempoSpawn += 1
-        
-        # Spawnear nuevo avatar cada X frames
-        if self.tiempoSpawn >= self.intervaloSpawn:
-            self.spawnearAvatar()
-            self.tiempoSpawn = 0
-    
-    def spawnearAvatar(self):
-        """Crea un nuevo avatar en la fila inferior"""
-        # 0-4 para tablero 5 columnas
-        columna = random.randint(0, 4)
-        
-        # última fila para tablero 9 filas
-        fila = 8
-        
-        # Seleccionar tipo según probabilidades
-        tipo = self.seleccionarTipoAvatar()
-        
-        # Obtener datos del avatar
-        datosAvatar = getattr(self.datosAvatars, tipo)
-        
-        # Crear avatar
-        avatar = Avatar(tipo, fila, columna, datosAvatar, self.gridConfig)
-        self.avatarsActivos.append(avatar)
-        
-        tiempoRestante = (self.tiempoLimiteFrames - self.tiempoTranscurrido) / self.fps
-        print(f"👤 {tipo} spawneado en columna {columna} (Tiempo restante: {int(tiempoRestante)}s)")
-    
-    def seleccionarTipoAvatar(self):
-        """Selecciona tipo de avatar según probabilidades"""
-        # Crear lista ponderada
-        tipos = []
-        for tipo, prob in self.probabilidades.items():
-            tipos.extend([tipo] * prob)
-        
-        return random.choice(tipos)
-    
-    def dibujar(self, pantalla):
-        """Dibuja todos los avatars y sus proyectiles"""
-        for avatar in self.avatarsActivos:
-            avatar.dibujar(pantalla)
-    
-    def obtenerTiempoRestante(self):
-        """Retorna el tiempo restante en segundos"""
-        if not self.juegoActivo:
-            return 0
-        
-        framesRestantes = self.tiempoLimiteFrames - self.tiempoTranscurrido
-        return max(0, framesRestantes / self.fps)
-    
     def obtenerEstadisticas(self):
-        """Retorna estadísticas actuales del juego"""
-        tiempoRestante = self.obtenerTiempoRestante()
-        minutos = int(tiempoRestante // 60)
-        segundos = int(tiempoRestante % 60)
+        tiempoRestante = max(0, self.tiempoLimiteFrames - self.tiempoTranscurrido) // self.fps
+        minutos = tiempoRestante // 60
+        segundos = tiempoRestante % 60
         
         return {
             "dificultad": self.dificultad,
             "tiempoRestante": tiempoRestante,
-            "tiempoRestanteStr": f"{minutos}:{segundos:02d}",
+            "tiempoRestanteStr": f"{minutos:02}:{segundos:02}",
             "avatarsVivos": len(self.avatarsActivos),
-            "juegoActivo": self.juegoActivo,
             "perdio": self.jugadorPerdio,
             "gano": self.jugadorGano,
             "resultado": self.causaResultado
         }
 
     def obtenerYResetearPuntos(self):
-        """Obtiene los puntos ganados este frame y los resetea"""
         puntos = self.puntosGanados
         self.puntosGanados = 0
         return puntos
+
+    def actualizar(self, torres):
+        """Actualiza la lógica de los avatars, movimiento, y colisiones con proyectiles de torre"""
+        if not self.juegoActivo:
+            return
+
+        self.actualizarSpawn()
+        
+        # 1. Actualizar Avatars (movimiento y ataque a torres)
+        for avatar in self.avatarsActivos[:]:
+            avatar.actualizar(torres) 
+            
+            # Verificar si el avatar llegó al final
+            if avatar.llegoPantallaArriba():
+                self.juegoActivo = False
+                self.jugadorPerdio = True
+                self.causaResultado = f"Un {avatar.tipo} llegó al final."
+                print(f"💀 ¡PERDISTE! {self.causaResultado}")
+                return
+        
+        # 2. Actualizar Colisiones (Avatars vs Proyectiles de Torre)
+        for torre in torres:
+            for proyectil in torre.proyectiles[:]:
+                for avatar in self.avatarsActivos[:]:
+                    if proyectil.colisionaConAvatar(avatar):
+                        puntos = avatar.recibirDaño(proyectil.daño)
+                        self.puntosGanados += puntos
+                        proyectil.activo = False
+                        
+                        if not avatar.vivo:
+                            self.avatarsActivos.remove(avatar)
+                            self.avatarsMatados += 1
+                            print(f"🎯 {avatar.tipo} eliminado. Puntos: +{puntos}")
+                        
+                        break # Un proyectil solo golpea a un avatar
+        
+        # 3. Actualizar Colisiones (Torres vs Proyectiles de Avatar)
+        for avatar in self.avatarsActivos:
+            for proyectil in avatar.proyectiles[:]:
+                # 🛡️ Usamos una copia de 'torres' para evitar problemas si se elimina una torre
+                for torre in torres[:]:
+                    if proyectil.colisionaConTorre(torre):
+                        torre.recibirDaño(proyectil.daño)
+                        proyectil.activo = False
+                        
+                        if not torre.viva:
+                            # Se elimina de la lista 'torres' (que debe ser una referencia compartida)
+                            try:
+                                torres.remove(torre)
+                                print(f"💥 Torre {torre.tipo} eliminada.")
+                            except ValueError:
+                                pass # Ya fue eliminada o no estaba en la lista
+
+                        break
+        
+        # 4. Control de tiempo/victoria
+        self.tiempoTranscurrido += 1
+        if self.tiempoTranscurrido >= self.tiempoLimiteFrames:
+            self.juegoActivo = False
+            self.jugadorGano = True
+            self.causaResultado = "Tiempo agotado. ¡Sobreviviste!"
+            print(f"🎉 ¡GANASTE! {self.causaResultado}")
+
+    def actualizarSpawn(self):
+        """Controla el tiempo de espera entre spawns y llama a spawnearAvatar"""
+        self.tiempoSpawn += 1
+        
+        if self.juegoActivo and self.tiempoTranscurrido % self.fps == 0: # Cada segundo
+            # Si el tiempo actual es mayor que el tiempo máximo configurado para el intervalo
+            if (self.tiempoSpawn / self.fps) >= random.randint(self.spawnMin, self.spawnMax): 
+                self.spawnearAvatar()
+                self.tiempoSpawn = 0
+            
+    def seleccionarTipoAvatar(self):
+        """Selecciona el tipo de avatar basado en probabilidades"""
+        pesoTotal = sum(self.probabilidades.values())
+        valorAleatorio = random.uniform(0, pesoTotal)
+        acumulado = 0
+        for tipo, peso in self.probabilidades.items():
+            acumulado += peso
+            if valorAleatorio <= acumulado:
+                return tipo
+        return random.choice(list(self.probabilidades.keys())) 
+
+    def spawnearAvatar(self):
+        """Crea un nuevo avatar en la fila inferior"""
+        columna = random.randint(0, 4)
+        fila = 8
+        tipo = self.seleccionarTipoAvatar()
+        datosAvatar = getattr(self.datosAvatars, tipo)
+        
+        avatar = Avatar(tipo, fila, columna, datosAvatar, self.gridConfig, 
+                        avatar_imagenes=self.avatar_imagenes)
+        self.avatarsActivos.append(avatar)
+        
+        tiempoRestante = (self.tiempoLimiteFrames - self.tiempoTranscurrido) / self.fps
+        print(f"👤 {tipo} spawneado en columna {columna} (Tiempo restante: {int(tiempoRestante)}s)")
+    
+    def dibujar(self, pantalla):
+        """Dibuja todos los avatars y sus proyectiles"""
+        for avatar in self.avatarsActivos:
+            avatar.dibujar(pantalla)
 
 
 class GestorTorres:
     """Gestiona todas las torres del tablero"""
     
-    def __init__(self, matriz, datosTorres, gridConfig):
-        
+    def __init__(self, matriz, datosTorres, gridConfig, torre_imagenes=None, proyectil_imagenes=None):
+
         self.torres = []
         self.gridConfig = gridConfig
         self.datosTorres = datosTorres
-        self.matriz = matriz  # Guardar referencia a la matriz
+        self.matriz = matriz 
+        
+        # Guardar referencias a las imágenes
+        self.torre_imagenes = torre_imagenes
+        self.proyectil_imagenes = proyectil_imagenes 
+        
         self.crearTorresDesdeMatriz(matriz, datosTorres)
     
     def crearTorresDesdeMatriz(self, matriz, datosTorres):
-        """Convierte la matriz de pantallaJuego en objetos Torre"""
+        """Convierte la matriz de pantallaJuego en objetos Torre, pasándoles las imágenes"""
         for fila in range(len(matriz)):
             for columna in range(len(matriz[0])):
                 idTorre = matriz[fila][columna]
                 
-                if idTorre:  # Si hay una torre
+                if idTorre:
                     datos = datosTorres[idTorre]
-                    torre = Torre(idTorre, fila, columna, datos, self.gridConfig)
+                    torre = Torre(idTorre, fila, columna, datos, self.gridConfig, 
+                                  torre_imagenes=self.torre_imagenes)
                     self.torres.append(torre)
         
         print(f"🏰 {len(self.torres)} torres creadas")
     
     def agregarTorre(self, idTorre, fila, columna):
-        """
-        Agrega una nueva torre durante la partida
-        
-        Args:
-            idTorre: str - "T1", "T2", "T3", "T4"
-            fila: int - fila en la matriz
-            columna: int - columna en la matriz
-        
-        Returns:
-            Torre: objeto torre creado, o None si falla
-        """
+        """Agrega una nueva torre durante la partida, pasándole las imágenes"""
         try:
             datos = self.datosTorres[idTorre]
-            torre = Torre(idTorre, fila, columna, datos, self.gridConfig)
+            torre = Torre(idTorre, fila, columna, datos, self.gridConfig, 
+                          torre_imagenes=self.torre_imagenes)
             self.torres.append(torre)
             print(f"🏰 Torre {idTorre} agregada en ({fila}, {columna}) durante partida")
             return torre
         except Exception as e:
             print(f"❌ Error agregando torre: {e}")
             return None
-    
+
     def eliminarTorre(self, fila, columna):
-        
-        """Elimina una torre en una posición específica"""
-        
+        """Elimina una torre por posición (llamado desde PantallaJuego al hacer click derecho)"""
         for torre in self.torres[:]:
             if torre.fila == fila and torre.columna == columna:
                 self.torres.remove(torre)
-                print(f"🗑️ Torre {torre.tipo} eliminada de ({fila}, {columna})")
+                print(f"Torre {torre.tipo} eliminada de la lista activa.")
                 return True
         return False
     
     def actualizar(self, avatars, fps):
-        
-        """Actualiza todas las torres (las hace atacar)"""
-        
+        """Actualiza la lógica de las torres (ataque)"""
         for torre in self.torres:
-            if torre.viva:
-                torre.actualizar(avatars, fps)
-        
-        # Limpieza de matriz
-        torres_destruidas = [t for t in self.torres if not t.viva]
-        for torre in torres_destruidas:
-            # Limpiar la casilla en la matriz
-            if self.matriz[torre.fila][torre.columna] == torre.tipo:
-                self.matriz[torre.fila][torre.columna] = None
-                print(f"🧹 Casilla ({torre.fila}, {torre.columna}) limpiada en la matriz")
-        
-        # Eliminar torres destruidas
-        self.torres = [t for t in self.torres if t.viva]
-    
+            if not torre.viva:
+                continue
+
+            # 1. Buscar objetivo
+            objetivo = None
+            for avatar in avatars:
+                # Usa la nueva lógica de rango que permite el ataque a distancia
+                if torre.dentroRango(avatar) and avatar.vivo and not avatar.apareciendo:
+                    objetivo = avatar
+                    break # La torre ataca al avatar más cercano (el primero que encuentra)
+            
+            # 2. Controlar el tiempo de ataque y disparar
+            torre.tiempoAtaque += 1
+            framesPorAtaque = torre.duracionAtaque * fps
+            
+            if objetivo and torre.tiempoAtaque >= framesPorAtaque:
+                # CREACIÓN DEL PROYECTIL: Le pasa el diccionario de imágenes
+                proyectil = Proyectil(
+                    torre.x, torre.y, torre.daño, torre.tipo, 
+                    esAvatar=False, 
+                    imagenes=self.proyectil_imagenes 
+                )
+                torre.proyectiles.append(proyectil)
+                torre.tiempoAtaque = 0
+            
+            # 3. Mover y limpiar proyectiles
+            for proyectil in torre.proyectiles[:]:
+                proyectil.actualizar()
+                if not proyectil.activo:
+                    torre.proyectiles.remove(proyectil)
+
     def dibujar(self, pantalla):
-        """Dibuja todas las torres"""
+        """Dibuja todas las torres y sus proyectiles"""
         for torre in self.torres:
             torre.dibujar(pantalla)
-    
-    def verificarTodasDestruidas(self):
-        """Verifica si todas las torres fueron destruidas"""
-        return len(self.torres) == 0
