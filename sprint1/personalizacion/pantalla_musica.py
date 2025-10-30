@@ -4,6 +4,7 @@ import pygame
 from constantes import ANCHO_VENTANA, ALTO_VENTANA, FPS, PANTALLA_COMPLETA
 from componentes import BotonVolver, Slider
 from spotify_api import SpotifyAPI
+from preferencias_usuario import GestorPreferencias
 
 
 class PantallaMusica:
@@ -23,6 +24,9 @@ class PantallaMusica:
         
         # Inicializar API de Spotify
         self.spotify = SpotifyAPI()
+        
+        # Inicializar gestor de preferencias
+        self.gestor_preferencias = GestorPreferencias()
         
         # Variables de búsqueda
         self.textoBusqueda = ""
@@ -57,6 +61,8 @@ class PantallaMusica:
     def cambiarVolumenSpotify(self, volumen):
         #Callback que se ejecuta cuando el slider cambia
         self.spotify.cambiarVolumen(volumen)
+        # Guardar volumen en preferencias
+        self.gestor_preferencias.actualizar_volumen(volumen)
     
     def buscar(self):
         #Busca canciones usando la API de Spotify
@@ -108,6 +114,8 @@ class PantallaMusica:
                             # Reproducir canción
                             if self.spotify.reproducirCancion(uri):
                                 print(f"Reproduciendo: {nombre} - {artista}")
+                                # Guardar canción en preferencias
+                                self.gestor_preferencias.actualizar_cancion(uri)
             
             # Botón volver
             if self.botonVolver.manejarEvento(evento):
