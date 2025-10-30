@@ -506,6 +506,7 @@ class GestorAvatars:
         self.jugadorPerdio = False
         self.jugadorGano = False
         self.causaResultado = ""
+        self.avatarsMatados = 0  # Contador de avatars eliminados
         
         # Temporizador de partida
         self.tiempoTranscurrido = 0  # En frames
@@ -589,6 +590,7 @@ class GestorAvatars:
         for avatar in self.avatarsActivos[:]:
             if not avatar.vivo:
                 self.avatarsActivos.remove(avatar)
+                self.avatarsMatados += 1  # Incrementar contador
                 continue
             
             # Actualizar avatar pasando las torres para detección de colisiones
@@ -691,6 +693,7 @@ class GestorAvatars:
             "tiempoRestante": tiempoRestante,
             "tiempoRestanteStr": f"{minutos}:{segundos:02d}",
             "avatarsVivos": len(self.avatarsActivos),
+            "avatarsMatados": self.avatarsMatados,
             "juegoActivo": self.juegoActivo,
             "perdio": self.jugadorPerdio,
             "gano": self.jugadorGano,

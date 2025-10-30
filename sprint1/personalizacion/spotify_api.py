@@ -1,8 +1,11 @@
-# spotify_Api.py
+# spotify_api.py
 
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
+# Valores por defecto para el juego
+tempo = 120  # Valor de tempo predeterminado (120 BPM es común)
+popularidad = 70  # Valor de popularidad predeterminado (escala 0-100)
 
 class SpotifyAPI:
     #Clase para manejar la API de Spotify
@@ -66,13 +69,27 @@ class SpotifyAPI:
             track: Objeto track de Spotify
             
         Returns:
-            Tupla (nombre, artista, uri)
+            Tupla (nombre, artista, uri, tempo, popularidad)
         """
+        global tempo, popularidad  # Usar las variables globales
+        
         nombre = track["name"]
         artista = track["artists"][0]["name"]
         uri = track["uri"]
-        tempo = track["tempo"]
-        popularidad = track["popularidad"]
+        
+        # Actualizar las variables globales con los datos de la canción actual
+        try:
+            features = self.sp.audio_features([uri])[0]
+            tempo = features.get("tempo", tempo)  # Usar el valor existente si no se puede obtener
+        except:
+            pass  # Mantener el tempo actual si hay error
+            
+        try:
+            track_info = self.sp.track(uri)
+            popularidad = track_info.get("popularity", popularidad)  # Usar el valor existente si no se puede obtener
+        except:
+            pass  # Mantener la popularidad actual si hay error
+            
         return nombre, artista, uri, tempo, popularidad
     
     def cambiarVolumen(self, volumen):

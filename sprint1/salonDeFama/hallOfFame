@@ -10,20 +10,20 @@ import sys
 
 
 class HallOfFame:
-    def __init__(self, ancho=900, alto=700, archivoPuntajes="puntajes.json"):
+    def __init__(self, ancho=900, alto=700):
         """
         Inicializa el Salón de la Fama
         
         Args:
             ancho: Ancho de la ventana
             alto: Alto de la ventana
-            archivoPuntajes: Nombre del archivo JSON con los puntajes
         """
         pygame.init()
         
         self.ancho = ancho
         self.alto = alto
-        self.archivoPuntajes = archivoPuntajes
+        # Usar la misma ruta que el algoritmo del banquero
+        self.archivoPuntajes = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'puntajes.json')
         self.pantalla = pygame.display.set_mode((ancho, alto))
         pygame.display.set_caption("Hall of Fame - Salón de la Fama")
         

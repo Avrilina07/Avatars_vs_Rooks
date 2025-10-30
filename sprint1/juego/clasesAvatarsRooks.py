@@ -12,7 +12,7 @@ class Avatars:
             "duracion_aparicion": 17,
             "duracion_ataque_min": 1,  
             "duracion_ataque_max": 5,
-            "puntos": 10
+            "puntos": 15
         } 
         self.escudero = {
             "vida": 10,
@@ -20,7 +20,7 @@ class Avatars:
             "duracion_aparicion": 17,
             "duracion_ataque_min": 1,
             "duracion_ataque_max": 5,
-            "puntos": 15
+            "puntos": 20
         }
         self.lenador = {
             "vida": 25,

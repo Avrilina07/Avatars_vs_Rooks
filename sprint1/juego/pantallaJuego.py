@@ -6,18 +6,35 @@ import pygame
 import sys
 import os
 
-"importar monedas desde coin"
-from coins import Coin, generarMonedas
-actualizarJuego
-# Importar desde personalizacion
+# Importar desde personalizacion y salonDeFama
 carpeta_actual = os.path.dirname(os.path.abspath(__file__))
 carpeta_padre = os.path.dirname(carpeta_actual)
-carpeta_personalizacion = os.path.join(carpeta_padre, 'personalizacion')
-sys.path.insert(0, carpeta_personalizacion)
 
+# Añadir rutas de las carpetas necesarias
+carpeta_personalizacion = os.path.join(carpeta_padre, 'personalizacion')
+carpeta_salon_fama = os.path.join(carpeta_padre, 'salonDeFama')
+
+# Asegurar que las carpetas están en el path
+if carpeta_personalizacion not in sys.path:
+    sys.path.insert(0, carpeta_personalizacion)
+if carpeta_salon_fama not in sys.path:
+    sys.path.insert(0, carpeta_salon_fama)
+
+# Importaciones locales
+from clasesAvatarsRooks import Avatars, Rooks
+from logicaAvatarsRooks import GestorAvatars, GestorTorres
+from coins import generarMonedas
+
+# Importaciones de personalizacion
 from constantes import FPS
 from componentes import Boton
 
+# Valores por defecto para el juego
+TEMPO_DEFAULT = 120  # BPM por defecto
+POPULARIDAD_DEFAULT = 70  # Popularidad por defecto (0-100)
+
+# Importaciones de salonDeFama
+from algoritmoDelBanquero import funcionDelBanquero, guardar_puntaje
 
 class PantallaJuego:
     """Pantalla de colocación de torres en el tablero 9x5"""
@@ -40,6 +57,18 @@ class PantallaJuego:
         self.colorFondo = colorFondo
         self.temaActual = temaActual
         
+        # Valores de música
+        self.tempo = TEMPO_DEFAULT
+        self.popularidad = POPULARIDAD_DEFAULT
+        
+        # Dificultad seleccionada
+        self.dificultad = dificultad
+        
+        # Sistema de monedas
+        self.monedas = []
+        self.puntosParaMonedas = 0  # Acumulador de puntos
+        self.umbralMonedas = 100     # Cuando llegue a 100, generar monedas
+
         # Dimensiones de pantalla
         self.ancho, self.alto = self.pantalla.get_size()
         
@@ -205,6 +234,8 @@ class PantallaJuego:
         self.matriz = [[None for _ in range(self.columnas)] for _ in range(self.filas)]
         self.torreSeleccionada = None
         self.dinero = 350
+        self.monedas = []
+        self.puntosParaMonedas = 0
         self.gestorAvatars = None
         self.gestorTorres = None
         self.juegoIniciado = False
@@ -239,13 +270,35 @@ class PantallaJuego:
         
         stats = self.gestorAvatars.obtenerEstadisticas()
         
-        if stats["perdio"]:
-            print(f"💀 ¡PERDISTE! {stats['resultado']}")
-            self.estadoJuego = "PERDIDO"
+        # Generar monedas cuando se alcance el umbral
+        if self.puntosParaMonedas >= self.umbralMonedas:
+            self.puntosParaMonedas -= self.umbralMonedas  # Resetear o mantener excedente
+            self.monedas = self.generarMonedas()
+            print("💰 ¡Monedas generadas!")
+        
+        if stats["perdio"] or stats["gano"]:
+            # Preparar estadísticas para el algoritmo del banquero
+            stats_juego = {
+                "tempo": self.tempo,
+                "popularidad": self.popularidad,
+                "avatarsMatados": stats.get("avatarsMatados", 0),
+                "puntosParaMonedas": self.puntosParaMonedas,
+                "limiteMaximo": 1000  # Ajustar según necesidad
+            }
             
-        if stats["gano"]:
-            print(f"🎉 ¡GANASTE! {stats['resultado']}")
-            self.ejecutando = False
+            # Calcular puntaje final
+            puntaje_final = funcionDelBanquero(stats_juego)
+            
+            if stats["perdio"]:
+                print(f"💀 ¡PERDISTE! {stats['resultado']}")
+                self.estadoJuego = "PERDIDO"
+                
+            if stats["gano"]:
+                print(f"🎉 ¡GANASTE! {stats['resultado']}")
+                self.ejecutando = False
+            
+            # Guardar el puntaje independientemente de si ganó o perdió
+            guardar_puntaje(puntaje_final, stats=stats_juego)
             
     def obtenerCasillaClick(self, mouseX, mouseY):
         """
@@ -354,6 +407,23 @@ class PantallaJuego:
                 if self.estadoJuego == "PERDIDO":
                     if self.botonReiniciar.manejarEvento(evento):
                         self.reiniciarJuego()
+                        
+                # Detectar clicks en monedas (solo cuando está JUGANDO)
+                if self.estadoJuego == "JUGANDO" and evento.button == 1:
+                    puntosGanados = 0
+                    tamañoCelda = self.anchoCasilla + self.gridAnchoExtra
+                    offsetX = self.tableroX + self.gridOffsetX
+                    offsetY = self.tableroY + self.gridOffsetY
+                    
+                    for moneda in self.monedas:
+                        if moneda.verificarClick((mouseX, mouseY), tamañoCelda, offsetX, offsetY):
+                            puntosGanados += moneda.valor
+                            print(f"💰 ¡Moneda de {moneda.valor} recogida!")
+                    
+                    if puntosGanados > 0:
+                        self.dinero += puntosGanados
+                        # Eliminar monedas clickeadas
+                        self.monedas = [m for m in self.monedas if not m.clickeada]
                         continue
 
                 # Lógica de SELECCIÓN de torres (en CONFIGURACION y JUGANDO)
@@ -558,7 +628,7 @@ class PantallaJuego:
             if self.gestorAvatars:
                 self.gestorAvatars.dibujar(self.pantalla)
                 
-        # 4. Dibujar monedas (solo cuando está JUGANDO)
+        # Dibujar monedas (solo cuando está JUGANDO)
         if self.estadoJuego == "JUGANDO":
             tamañoCelda = self.anchoCasilla + self.gridAnchoExtra
             offsetX = self.tableroX + self.gridOffsetX
