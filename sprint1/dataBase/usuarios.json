@@ -34,7 +34,7 @@
         "apellidos": "Ast",
         "usuario": "Avs",
         "email": "avri@gmail.com",
-        "contrasenaHash": "$2b$12$0VWDVjawrqXHcob2ikkktuB397YPFteo3qSnMvB82pkCOuMibMA3m",
+        "contrasenaHash": "$2b$12$HceXA2xv5jcOZl1r1PcN0eOhO.xifwroL6yoQ112c8ayIlwXhbPwO",
         "fechaNacimiento": "07/10/2006",
         "telefono": "gAAAAABo9lwjHDbEFFF0--TpYYLouDJsubvymiMZKz55TiE2eiYoioKSZ4qySwv5a7Nmhcww9vtvKq8UkvHN62AHG6KwLnaH2k9GKEu6p3bPUgDllU86Kts=",
         "preguntaSeguridad": "¿Cuál es el mejor equipo de futbol?",
@@ -54,7 +54,9 @@
         "fechaCaducidad": "02/28",
         "tieneFotoRegistrada": true,
         "rutaFoto": "dataBase\\imagenes\\Avs.png",
-        "foto": "dataBase\\imagenes\\Avs.png"
+        "foto": "dataBase\\imagenes\\Avs.png",
+        "contrasena_hash": "$2b$12$HceXA2xv5jcOZl1r1PcN0eOhO.xifwroL6yoQ112c8ayIlwXhbPwO",
+        "contrasena": "$2b$12$HceXA2xv5jcOZl1r1PcN0eOhO.xifwroL6yoQ112c8ayIlwXhbPwO"
     },
     {
         "nombre": "Gabriel",
