@@ -89,3 +89,33 @@ class SpotifyAPI:
         except Exception as e:
             print(f"Error al cambiar volumen: {e}")
             return False
+    
+    def pausarMusica(self):
+        """
+        Pausa la reproducción actual de Spotify
+        
+        Returns:
+            True si se pausó correctamente, False si hubo error
+        """
+        try:
+            self.sp.pause_playback()
+            print("Música pausada")
+            return True
+        except Exception as e:
+            print(f"Error al pausar música: {e}")
+            return False
+    
+    def reanudarMusica(self):
+        """
+        Reanuda la reproducción pausada de Spotify
+        
+        Returns:
+            True si se reanudó correctamente, False si hubo error
+        """
+        try:
+            self.sp.start_playback()
+            print("Música reanudada")
+            return True
+        except Exception as e:
+            print(f"Error al reanudar música: {e}")
+            return False

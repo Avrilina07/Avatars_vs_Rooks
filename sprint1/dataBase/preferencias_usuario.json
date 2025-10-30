@@ -1,0 +1,26 @@
+{
+    "DiegoG": {
+        "color_fondo": "Amarillo Mostaza",
+        "tema": "Oscuro",
+        "volumen": 98,
+        "ultima_cancion": null
+    },
+    "Jorge2": {
+        "color_fondo": "Verde",
+        "tema": "Intermedio",
+        "volumen": 50,
+        "ultima_cancion": null
+    },
+    "juanito1": {
+        "color_fondo": "Verde Lima",
+        "tema": "Claro (Predeterminado)",
+        "volumen": 90,
+        "ultima_cancion": "spotify:track:5dtzqRtiXKftAk6B6vxUmr"
+    },
+    "hola": {
+        "color_fondo": "Morado Claro",
+        "tema": "Intermedio",
+        "volumen": 100,
+        "ultima_cancion": "spotify:track:7bywjHOc0wSjGGbj04XbVi"
+    }
+}

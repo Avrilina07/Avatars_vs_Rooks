@@ -59,25 +59,21 @@ class LoginApp:
         self.fieldEdited = {}
 
         # main frame
-        outer = tk.Frame(self.root, bg='#B41214')
-        outer.pack(fill='both', expand=True)
-        self.main_frame = tk.Frame(outer, bg='#B41214')
-        self.main_frame.place(relx=0.5, rely=0.5, anchor='center')
-        try:
-            self.main_frame.configure(padx=20, pady=20)
-        except Exception:
-            pass
+        self.main_frame = tk.Frame(self.root, bg='red')
+        self.main_frame.pack(fill='both', expand=True, padx=20, pady=20)
         # header links
-        header_frame = tk.Frame(outer, bg='#B41214')
-        header_frame.place(x=10, y=10, anchor='nw')
+        header_frame = tk.Frame(self.main_frame, bg='red')
+        header_frame.pack(fill='x', pady=(0, 10))
 
-        self.helpLink = tk.Label(header_frame, text="Ayuda", fg='blue', bg='#B41214', cursor='hand2', font=('Arial', 9, 'underline'))
+        self.helpLink = tk.Label(header_frame, text="Ayuda", fg='blue', bg='red', cursor='hand2', font=('Arial', 9, 'underline'))
         self.helpLink.pack(side='left')
-        self.creditsLink = tk.Label(header_frame, text="Creditos", fg='blue', bg='#B41214', cursor='hand2', font=('Arial', 9, 'underline'))
+        # enlazar click de ayuda a un handler
+        self.helpLink.bind('<Button-1>', lambda e: self.showHelp())
+        self.creditsLink = tk.Label(header_frame, text="Creditos", fg='blue', bg='red', cursor='hand2', font=('Arial', 9, 'underline'))
         self.creditsLink.pack(side='left', padx=(10, 0))
 
         # title
-        self.titleLabel = tk.Label(self.main_frame, text="Inicio de Sesión", font=('Arial', 12), bg='#B41214')
+        self.titleLabel = tk.Label(self.main_frame, text="Inicio de Sesión", font=('Arial', 12), bg='red')
         self.titleLabel.pack(pady=10)
 
         # helper to register widgets for autosave/placeholder behavior
@@ -98,7 +94,7 @@ class LoginApp:
         registerWidget(self.entryUsername, "usuario/email/telefono")
 
         # password (with show/hide button)
-        pw_frame = tk.Frame(self.main_frame, bg='#B41214')
+        pw_frame = tk.Frame(self.main_frame, bg='red')
         pw_frame.pack(pady=5)
         self.entryPassword = tk.Entry(pw_frame, font=('Arial', 10), width=28, show='*')
         self.entryPassword.pack(side=tk.LEFT, ipady=5)
@@ -108,7 +104,7 @@ class LoginApp:
         self.btnEye.pack(side=tk.LEFT, padx=4)
 
         # forgot password link
-        self.forgotLink = tk.Label(self.main_frame, text="¿Olvidaste tu contraseña?", fg='blue', bg='#B41214', cursor='hand2', font=('Arial', 9, 'underline'))
+        self.forgotLink = tk.Label(self.main_frame, text="¿Olvidaste tu contraseña?", fg='blue', bg='red', cursor='hand2', font=('Arial', 9, 'underline'))
         self.forgotLink.pack(pady=5)
         self.forgotLink.bind('<Button-1>', lambda e: self.goToRecovery())
 
@@ -117,7 +113,7 @@ class LoginApp:
         self.loginBtn.pack(pady=10)
 
         # language selector (display names in native language)
-        idioma_frame = tk.Frame(self.main_frame, bg='#B41214')
+        idioma_frame = tk.Frame(self.main_frame, bg='red')
         idioma_frame.pack(anchor='e', pady=5, fill='x')
 
         # map display name -> internal key (display includes flag emoji)
@@ -135,20 +131,20 @@ class LoginApp:
         registerWidget(self.languageCombo)
 
         # alternate methods separator
-        separator_frame = tk.Frame(self.main_frame, bg='#B41214')
+        separator_frame = tk.Frame(self.main_frame, bg='red')
         separator_frame.pack(fill='x', pady=8)
-        tk.Frame(separator_frame, bg='black', height=1).pack(side='left', fill='x', expand=True, padx=5)
+        tk.Frame(separator_frame, bg='gray', height=1).pack(side='left', fill='x', expand=True, padx=5)
         # keep on self so translations can update it dynamically
-        self.otherMethodsLabel = tk.Label(separator_frame, text="Otros métodos de inicio de sesión", bg='#B41214', font=('Arial', 9))
+        self.otherMethodsLabel = tk.Label(separator_frame, text="Otros métodos de inicio de sesión", bg='red', font=('Arial', 9))
         self.otherMethodsLabel.pack(side='left')
-        tk.Frame(separator_frame, bg='black', height=1).pack(side='left', fill='x', expand=True, padx=5)
+        tk.Frame(separator_frame, bg='gray', height=1).pack(side='left', fill='x', expand=True, padx=5)
 
         # facial recognition button (will attempt face login)
         self.facialBtn = tk.Button(self.main_frame, text="Reconocimiento Facial", font=('Arial', 10), width=20, command=self.loginWithFace)
         self.facialBtn.pack(pady=8)
 
         # register link
-        self.registerLink = tk.Label(self.main_frame, text="Registrarse", fg='blue', bg='#B41214', cursor='hand2', font=('Arial', 9, 'underline'))
+        self.registerLink = tk.Label(self.main_frame, text="Registrarse", fg='blue', bg='red', cursor='hand2', font=('Arial', 9, 'underline'))
         self.registerLink.pack(pady=5)
         self.registerLink.bind('<Button-1>', lambda e: self.goToRegister())
 
@@ -421,26 +417,43 @@ class LoginApp:
                     print(f'DEBUG: session_user.json escrito con usuario {actual_username}')
                 except Exception:
                     print('DEBUG: no se pudo escribir session_user.json')
-                # check personalizado flag and launch personalizacion if needed
+                # Verificar si el usuario ya tiene preferencias guardadas
+                tiene_preferencias = False
                 try:
-                    personalizado = False
-                    if other and isinstance(other, dict):
-                        personalizado = bool(other.get('personalizado', False))
-                except Exception:
-                    personalizado = False
+                    # Buscar archivo de preferencias en dataBase
+                    prefs_path = os.path.join(os.path.dirname(__file__), '..', 'dataBase', 'preferencias_usuario.json')
+                    if os.path.exists(prefs_path):
+                        with open(prefs_path, 'r', encoding='utf-8') as f:
+                            todas_prefs = json.load(f)
+                            # Verificar si este usuario tiene preferencias guardadas
+                            if actual_username in todas_prefs:
+                                tiene_preferencias = True
+                                print(f'DEBUG: Usuario {actual_username} tiene preferencias guardadas')
+                            else:
+                                print(f'DEBUG: Usuario {actual_username} NO tiene preferencias guardadas')
+                    else:
+                        print('DEBUG: Archivo de preferencias no existe aún')
+                except Exception as e:
+                    print(f'DEBUG: Error al verificar preferencias: {e}')
+                    tiene_preferencias = False
+                
                 try:
                     self.root.destroy()
                 except Exception:
                     pass
-                # If user is already personalized, open the difficulty pantalla; otherwise open personalizacion
+                
+                # Si el usuario ya tiene preferencias, ir directo a pantalla dificultad con sus datos
+                # Si no tiene preferencias, ir a personalización
                 try:
-                    if personalizado:
+                    if tiene_preferencias:
                         try:
+                            print(f'DEBUG: Abriendo pantalla dificultad con preferencias guardadas')
                             self._launch_pantalla_dificultad()
                         except Exception as e:
                             messagebox.showerror('Error', f'No se pudo abrir Pantalla dificultad: {e}')
                     else:
                         try:
+                            print(f'DEBUG: Primera vez del usuario, abriendo personalización')
                             self._launch_personalizacion()
                         except Exception as e:
                             messagebox.showerror('Error', f'No se pudo abrir Personalización: {e}')
@@ -579,6 +592,55 @@ class LoginApp:
                 self.root.destroy()
             except Exception:
                 pass
+
+    def showHelp(self):
+        """Muestra un cuadro de ayuda con información para el usuario desde un archivo .md"""
+        try:
+            # Buscar el archivo ayuda.md en el mismo directorio
+            help_file = os.path.join(os.path.dirname(__file__), 'Instrucciones de uso.md')
+            
+            # Leer el contenido del archivo
+            if os.path.exists(help_file):
+                with open(help_file, 'r', encoding='utf-8') as f:
+                    help_text = f.read()
+            else:
+                # Texto por defecto si no existe el archivo
+                help_text = "No se puede mostrar en este momento."
+            
+            # Crear ventana personalizada para mostrar el texto con scroll
+            help_window = tk.Toplevel(self.root)
+            help_window.title('Ayuda')
+            help_window.geometry('600x400')
+            
+            # Frame con scrollbar
+            frame = tk.Frame(help_window)
+            frame.pack(fill='both', expand=True, padx=10, pady=10)
+            
+            # Scrollbar
+            scrollbar = tk.Scrollbar(frame)
+            scrollbar.pack(side='right', fill='y')
+            
+            # Text widget para mostrar el contenido
+            text_widget = tk.Text(frame, wrap='word', yscrollcommand=scrollbar.set, font=('Arial', 10))
+            text_widget.pack(side='left', fill='both', expand=True)
+            text_widget.insert('1.0', help_text)
+            text_widget.config(state='disabled')  # Solo lectura
+            
+            scrollbar.config(command=text_widget.yview)
+            
+            # Botón cerrar
+            btn_close = tk.Button(help_window, text='Cerrar', command=help_window.destroy, width=10)
+            btn_close.pack(pady=(0, 10))
+            
+            # Centrar ventana
+            help_window.transient(self.root)
+            help_window.update_idletasks()
+            x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (help_window.winfo_width() // 2)
+            y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (help_window.winfo_height() // 2)
+            help_window.geometry(f'+{x}+{y}')
+            
+        except Exception as e:
+            messagebox.showerror('Error', f'No se pudo mostrar la ayuda: {str(e)}')
 
     def _prompt_new_password_for_user(self, usuario):
         """Prompt the user twice for a new password, validate and return hashed value or None."""
@@ -1181,27 +1243,46 @@ class LoginApp:
         # threshold: empirical; for our simple mean-face approach use a high threshold
         print(f'DEBUG: Mejor coincidencia: {best_user} con distancia {best_dist}')
         if best_user and best_dist < 15000:
-            # try to extract personalizado flag from usuarios.json
-            pflag = False
+            # Verificar si el usuario ya tiene preferencias guardadas
+            tiene_preferencias = False
             try:
-                for u in usuarios_list:
-                    if (u.get('usuario') or u.get('username')) == best_user:
-                        pflag = bool(u.get('personalizado', False))
-                        break
+                # Buscar archivo de preferencias en dataBase
+                prefs_path = os.path.join(os.path.dirname(__file__), '..', 'dataBase', 'preferencias_usuario.json')
+                if os.path.exists(prefs_path):
+                    with open(prefs_path, 'r', encoding='utf-8') as f:
+                        todas_prefs = json.load(f)
+                        if best_user in todas_prefs:
+                            tiene_preferencias = True
+                            print(f'DEBUG: Usuario {best_user} tiene preferencias guardadas')
+                        else:
+                            print(f'DEBUG: Usuario {best_user} NO tiene preferencias guardadas')
+            except Exception as e:
+                print(f'DEBUG: Error al verificar preferencias para login facial: {e}')
+                tiene_preferencias = False
+            
+            messagebox.showinfo('Éxito', f'Usuario reconocido: {best_user}')
+            
+            # Escribir session_user.json para que otros módulos sepan quién está logueado
+            try:
+                self._write_session_user(best_user)
+                print(f'DEBUG: session_user.json escrito con usuario {best_user}')
             except Exception:
-                pflag = False
-            messagebox.showinfo('Éxito', f'Usuario reconocido: {best_user} - Personalizado: {pflag}')
+                print('DEBUG: no se pudo escribir session_user.json')
+            
             try:
                 self.root.destroy()
             except Exception:
                 pass
-            if pflag:
+            
+            if tiene_preferencias:
                 try:
+                    print(f'DEBUG: Login facial - Abriendo pantalla dificultad con preferencias guardadas')
                     self._launch_pantalla_dificultad()
                 except Exception as e:
                     messagebox.showerror('Error', f'No se pudo abrir Pantalla dificultad: {e}')
             else:
                 try:
+                    print(f'DEBUG: Login facial - Primera vez del usuario, abriendo personalización')
                     self._launch_personalizacion()
                 except Exception as e:
                     messagebox.showerror('Error', f'No se pudo abrir Personalización: {e}')

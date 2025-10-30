@@ -1,6 +1,8 @@
 # pantallas.py
 
 import pygame
+import sys
+import os
 from constantes import ANCHO_VENTANA, ALTO_VENTANA, FPS, PANTALLA_COMPLETA
 from componentes import Boton, DropdownTema, Slider
 from temas import ConfiguracionTemas
@@ -8,12 +10,35 @@ from fondo import ColoresFondoDisponibles
 from spotify_api import SpotifyAPI
 from pantalla_musica import PantallaMusica
 from pantalla_interfaz import PantallaPersonalizacionInterfaz
+from preferencias_usuario import GestorPreferencias
+
+carpeta_actual = os.path.dirname(os.path.abspath(__file__))  # personalizacion
+carpeta_sprint1 = os.path.dirname(carpeta_actual)  # sprint1
+carpeta_avatars = os.path.dirname(carpeta_sprint1)  # Avatars_vs_Rooks
+carpeta_juego = os.path.join(carpeta_avatars, 'sprint1', 'juego')
+sys.path.insert(0, carpeta_juego)
+
+
+try:
+    from pantallaDificultad import PantallaDificultad
+    from pantallaJuego import PantallaJuego
+    print(" Módulos del juego importados correctamente")
+except ImportError as e:
+    print(f"Error al importar módulos del juego: {e}")
+    print(f"Asegúrate de que pantallaDificultad.py está en: {carpeta_juego}")
+    sys.exit(1)
 
 
 class PantallaPersonalizacion:
     #Pantalla principal de personalización
     
     def __init__(self):
+        # Inicializar gestor de preferencias
+        self.gestor_preferencias = GestorPreferencias()
+        
+        # Cargar preferencias del usuario
+        preferencias = self.gestor_preferencias.cargar_preferencias()
+        
         # Configurar pantalla
         if PANTALLA_COMPLETA:
             self.pantalla = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
@@ -32,11 +57,13 @@ class PantallaPersonalizacion:
         # Inicializar API de Spotify para control de volumen
         self.spotify = SpotifyAPI()
         
-        # Tema actual
-        self.temaActual = ConfiguracionTemas.CLARO
+        # Cargar tema desde preferencias
+        self.temaActual = self._obtener_tema_por_nombre(preferencias.get("tema", "Claro (Predeterminado)"))
         
-        # Color de fondo personalizado (por defecto el rojo inicial)
-        self.colorFondoPersonalizado = ColoresFondoDisponibles.ROJO_MUY_OSCURO_3
+        # Cargar color de fondo desde preferencias
+        self.colorFondoPersonalizado = self._obtener_color_por_nombre(
+            preferencias.get("color_fondo", "Vino Oscuro")
+        )
         
         # Fuentes
         self.fuenteTitulo = pygame.font.SysFont('Arial', 90, bold=True)
@@ -50,10 +77,52 @@ class PantallaPersonalizacion:
         self.sliderVolumen = None
         
         self.actualizarPosiciones()
+        
+        # Cargar volumen desde preferencias
+        volumen_guardado = preferencias.get("volumen", 50)
+        if self.sliderVolumen:
+            self.sliderVolumen.valor = volumen_guardado
+            self.spotify.cambiarVolumen(volumen_guardado)
+    
+    def _obtener_tema_por_nombre(self, nombre_tema):
+        """
+        Obtiene un objeto Tema a partir de su nombre.
+        
+        Args:
+            nombre_tema: Nombre del tema
+            
+        Returns:
+            Tema: Objeto tema correspondiente o tema por defecto
+        """
+        todos_temas = ConfiguracionTemas.obtenerTodos()
+        for tema in todos_temas:
+            if tema.nombre == nombre_tema:
+                return tema
+        # Si no se encuentra, devolver tema por defecto
+        return ConfiguracionTemas.CLARO
+    
+    def _obtener_color_por_nombre(self, nombre_color):
+        """
+        Obtiene un objeto ColorFondo a partir de su nombre.
+        
+        Args:
+            nombre_color: Nombre del color
+            
+        Returns:
+            ColorFondo: Objeto color correspondiente o color por defecto
+        """
+        todos_colores = ColoresFondoDisponibles.obtenerTodos()
+        for color in todos_colores:
+            if color.nombre == nombre_color:
+                return color
+        # Si no se encuentra, devolver color por defecto
+        return ColoresFondoDisponibles.ROJO_MUY_OSCURO_3
     
     def cambiarVolumenSpotify(self, volumen):
         #Callback que se ejecuta cuando el slider cambia
         self.spotify.cambiarVolumen(volumen)
+        # Guardar volumen en preferencias
+        self.gestor_preferencias.actualizar_volumen(volumen)
     
     def actualizarPosiciones(self):
         #Actualiza las posiciones de los componentes según el tamaño de la ventana
@@ -96,7 +165,9 @@ class PantallaPersonalizacion:
         #Maneja todos los eventos de la pantalla
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
-                self.ejecutando = False
+                # No permitir cerrar si es primera vez (usuario debe completar personalización)
+                # Solo permitir salir mediante el botón "Vamos al juego"
+                pass
             
             # Detectar cambio de tamaño de ventana
             elif evento.type == pygame.VIDEORESIZE:
@@ -104,10 +175,12 @@ class PantallaPersonalizacion:
                 self.alto = evento.h
                 self.actualizarPosiciones()
             
-            # Tecla ESC para salir de pantalla completa
+            # Tecla ESC deshabilitada - el usuario debe ir al juego
+            # No puede volver al login en la primera sesión
             elif evento.type == pygame.KEYDOWN:
                 if evento.key == pygame.K_ESCAPE:
-                    self.ejecutando = False
+                    # No hacer nada, el usuario debe usar el botón "Vamos al juego"
+                    pass
             
             # Manejar eventos de botones
             if self.botonInterfaz.manejarEvento(evento):
@@ -116,36 +189,17 @@ class PantallaPersonalizacion:
             if self.botonCancion.manejarEvento(evento):
                 self.abrirPantallaMusica()
             
-            # explicit fallback: handle mouse clicks directly on botonJuego rect in case manejarEvento misses
-            if evento.type == pygame.MOUSEBUTTONDOWN:
-                try:
-                    pos = evento.pos
-                except Exception:
-                    pos = pygame.mouse.get_pos()
-                try:
-                    if self.botonJuego and self.botonJuego.rect.collidepoint(pos):
-                        print('DEBUG: botonJuego clicked at', pos)
-                        try:
-                            self.marcarUsuarioPersonalizadoYSalir()
-                        except Exception as e:
-                            print(f"Error al lanzar juego: {e}")
-                        # skip further handling for this event
-                        continue
-                except Exception:
-                    pass
-
+            # AQUÍ ESTÁ LA NUEVA FUNCIONALIDAD DEL BOTÓN "VAMOS AL JUEGO"
             if self.botonJuego.manejarEvento(evento):
-                # Al pulsar 'Vamos al juego' marcamos al usuario como personalizado y abrimos la pantalla de dificultad
-                try:
-                    self.marcarUsuarioPersonalizadoYSalir()
-                except Exception as e:
-                    print(f"Error al lanzar juego: {e}")
+                self.abrirPantallaDificultad()
             
             # Manejar dropdown
             temaSeleccionado = self.dropdownTema.manejarEvento(evento)
             if temaSeleccionado:
                 self.temaActual = temaSeleccionado
                 print(f"Tema seleccionado: {temaSeleccionado.nombre}")
+                # Guardar tema en preferencias
+                self.gestor_preferencias.actualizar_tema(temaSeleccionado.nombre)
             
             # Manejar slider
             self.sliderVolumen.manejarEvento(evento)
@@ -162,6 +216,9 @@ class PantallaPersonalizacion:
         if nuevoColor:
             self.colorFondoPersonalizado = nuevoColor
             self.actualizarPosiciones()
+            # Guardar color en preferencias
+            self.gestor_preferencias.actualizar_color_fondo(nuevoColor.nombre)
+            print(f"Color guardado en preferencias: {nuevoColor.nombre}")
 
     def abrirPantallaMusica(self):
         #Abre la pantalla de selección de música
@@ -256,69 +313,20 @@ class PantallaPersonalizacion:
                             changed = True
                             print(f"DEBUG: sesión faltante; único usuario en usuarios.json asumido: {usuario}")
                     else:
-                        # If multiple users but exactly one is not personalized, use that one
-                        not_personalizados = [u for u in usuarios if not bool(u.get('personalizado', False))]
-                        if len(not_personalizados) == 1:
-                            candidate = not_personalizados[0]
-                            name = (candidate.get('usuario') or candidate.get('username') or '')
-                            if name:
-                                usuario = name
-                                candidate['personalizado'] = True
-                                changed = True
-                                print(f"DEBUG: sesión faltante; usuario no personalizado encontrado: {usuario}")
-                except Exception as e:
-                    print(f"DEBUG: error en fallback para determinar usuario: {e}")
-
-            if changed:
-                try:
-                    with open(usuarios_path, 'w', encoding='utf-8') as f:
-                        json.dump(usuarios, f, indent=4, ensure_ascii=False)
-                    print(f"DEBUG: usuarios.json actualizado para usuario {usuario}")
-                except Exception as e:
-                    print(f"DEBUG: error escribiendo usuarios.json: {e}")
-            else:
-                print('Usuario no encontrado en usuarios.json; no se actualizó personalizado')
-
-        except Exception as e:
-            print(f'Error al actualizar usuarios.json: {e}')
-
-        # Launch the pantallaDificultad (try import then subprocess)
-        # Before launching, stop this screen's loop and quit pygame so the window closes
-        try:
-            print('DEBUG: Deteniendo pantalla Personalizacion antes de lanzar dificultad')
+                        # Usuario presionó ESC o SALIR en dificultad, cerrar todo
+                        print("Cerrando aplicación desde pantalla de dificultad...")
+                        self.ejecutando = False
+                        break
+                else:
+                    # El juego terminó normalmente (sin ESC), cerrar aplicación
+                    print("Juego finalizado, cerrando aplicación...")
+                    self.ejecutando = False
+                    break
+        
+        elif accion == 'VOLVER' or accion == 'QUIT':
+            # Si intenta volver o salir desde dificultad, cerrar todo
+            print("Cerrando aplicación desde pantalla de dificultad...")
             self.ejecutando = False
-            try:
-                pygame.quit()
-            except Exception:
-                pass
-        except Exception:
-            pass
-
-        # Try to launch the difficulty screen in a non-blocking way
-        try:
-            # Try import & run in a background thread to avoid blocking
-            import threading
-            try:
-                import juego.pantallaDificultad as pd
-                def _run_pd():
-                    try:
-                        pd.main()
-                    except Exception as e:
-                        print(f'Error en pd.main(): {e}')
-                t = threading.Thread(target=_run_pd, daemon=True)
-                t.start()
-                return
-            except Exception:
-                pass
-
-            # Fallback: spawn new python process non-blocking
-            python_exe = sys.executable or 'python'
-            script_path = os.path.join(repo_root, 'juego', 'pantallaDificultad.py')
-            if os.path.exists(script_path):
-                subprocess.Popen([python_exe, script_path])
-                return
-        except Exception as e:
-            print(f'Error al lanzar pantallaDificultad via subprocess/thread: {e}')
 
     def dibujar(self):
         #Dibuja todos los elementos de la pantalla
