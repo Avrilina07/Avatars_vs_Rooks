@@ -8,6 +8,8 @@ import os
 
 "importar monedas desde coin"
 from coins import Coin, generarMonedas, actualizarJuego
+from coins import Coin, generarMonedas
+actualizarJuego
 # Importar desde personalizacion
 carpeta_actual = os.path.dirname(os.path.abspath(__file__))
 carpeta_padre = os.path.dirname(carpeta_actual)
@@ -158,6 +160,20 @@ class PantallaJuego:
             80,
             "INICIAR JUEGO",
             32
+        )
+
+        boton.colorNormal = self.colorFondo.obtenerColorBoton()
+        boton.colorHover = self.colorFondo.obtenerColorHoverBoton()
+        boton.colorBorde = self.colorFondo.obtenerColorBorde()
+        boton.colorTexto = self.colorFondo.obtenerColorTextoBoton()
+
+        return boton
+    
+    # Crea el boton para ir al Hall of Fame
+    def crearBotonHallOfFame(self):
+        """Crea el botón HALL OF FAME"""
+        boton = Boton(
+            self.ancho // 2, self.alto // 2 + 200, 400, 80, "HALL OF FAME", 32
         )
 
         boton.colorNormal = self.colorFondo.obtenerColorBoton()
