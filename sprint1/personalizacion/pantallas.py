@@ -228,75 +228,141 @@ class PantallaPersonalizacion:
             self.temaActual  
         )
         pantallaMusica.ejecutar()
-    
-    def abrirPantallaDificultad(self):
-        """
-        Abre la pantalla de selección de dificultad y luego el juego
-        Nueva funcionalidad para el botón "Vamos al juego"
-        """
-        print("Abriendo pantalla de dificultad...")
+
+    def _read_session_usuario(self):
+        import os, json
+        try:
+            repo_root = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
+            cwd = os.getcwd()
+            print(f'DEBUG: cwd={cwd}')
+            # Try several locations for session_user.json (now in dataBase folder)
+            candidates = [
+                os.path.join(repo_root, 'dataBase', 'session_user.json'),
+                os.path.join(cwd, 'dataBase', 'session_user.json'),
+                os.path.join(os.path.dirname(__file__), 'dataBase', 'session_user.json')
+            ]
+            for session_path in candidates:
+                try:
+                    print(f'DEBUG: buscando session_user en {session_path}')
+                    if os.path.exists(session_path):
+                        with open(session_path, 'r', encoding='utf-8') as f:
+                            try:
+                                d = json.load(f)
+                                usuario = d.get('usuario')
+                                print(f"DEBUG: session_user.json ({session_path}) contiene usuario={usuario}")
+                                return usuario
+                            except Exception as e:
+                                print(f"DEBUG: error leyendo session_user.json {session_path}: {e}")
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        return None
+
+    def marcarUsuarioPersonalizadoYSalir(self):
+        """Marca al usuario como personalizado y guarda los cambios en usuarios.json"""
+        import os
+        import json
         
-        # Crear y ejecutar la pantalla de dificultad con los colores personalizados
+        usuario = self._read_session_usuario()
+        if not usuario:
+            print('No session usuario encontrado; no se marcará personalizado')
+            # Intentar fallback: si hay un solo usuario, asumir ese
+            try:
+                repo_root = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
+                usuarios_path = os.path.join(repo_root, 'dataBase', 'usuarios.json')
+                if os.path.exists(usuarios_path):
+                    with open(usuarios_path, 'r', encoding='utf-8') as f:
+                        usuarios = json.load(f)
+                    if len(usuarios) == 1:
+                        usuario = usuarios[0].get('usuario') or usuarios[0].get('username')
+                        print(f"DEBUG: único usuario encontrado: {usuario}")
+            except Exception:
+                pass
+        
+        if not usuario:
+            return
+
+        # Actualizar usuarios.json: set personalizado = True para este usuario
+        try:
+            repo_root = os.path.normpath(os.path.join(os.path.dirname(__file__), '..'))
+            usuarios_path = os.path.join(repo_root, 'dataBase', 'usuarios.json')
+            print(f'DEBUG: intentando leer usuarios.json en {usuarios_path}')
+            
+            if os.path.exists(usuarios_path):
+                with open(usuarios_path, 'r', encoding='utf-8') as f:
+                    usuarios = json.load(f)
+            else:
+                usuarios = []
+
+            changed = False
+            for u in usuarios:
+                name = (u.get('usuario') or u.get('username') or '')
+                if name and name.lower() == usuario.lower():
+                    u['personalizado'] = True
+                    # Persistir el color de fondo seleccionado
+                    try:
+                        u['colorFondo'] = list(self.colorFondoPersonalizado.rgb)
+                        u['colorFondo_nombre'] = getattr(self.colorFondoPersonalizado, 'nombre', None)
+                    except Exception:
+                        pass
+                    changed = True
+                    break
+
+            if changed:
+                with open(usuarios_path, 'w', encoding='utf-8') as f:
+                    json.dump(usuarios, f, indent=4, ensure_ascii=False)
+                print(f"DEBUG: usuario {usuario} marcado como personalizado")
+        except Exception as e:
+            print(f"ERROR al marcar usuario como personalizado: {e}")
+
+    def abrirPantallaDificultad(self):
+        """Abre la pantalla de dificultad y maneja la transición al juego"""
+        # Marcar usuario como personalizado antes de abrir el juego
+        self.marcarUsuarioPersonalizadoYSalir()
+        
+        # Crear y ejecutar pantalla de dificultad
         pantallaDificultad = PantallaDificultad(
             self.pantalla,
             self.colorFondoPersonalizado,
             self.temaActual
         )
         
-        # Ejecutar la pantalla de dificultad y obtener la acción del usuario
-        accion, dificultad = pantallaDificultad.ejecutar()
+        # ejecutar() devuelve (accion, dificultad)
+        resultado = pantallaDificultad.ejecutar()
+        accion = resultado[0] if isinstance(resultado, tuple) else resultado
+        dificultad = resultado[1] if isinstance(resultado, tuple) and len(resultado) > 1 else None
         
-        # Manejar la respuesta del usuario
+        print(f"DEBUG: Pantalla dificultad devolvió - acción: {accion}, dificultad: {dificultad}")
+        
+        # Manejar la acción devuelta por la pantalla de dificultad
         if accion == 'JUGAR':
-            print(f"Iniciando juego con dificultad: {dificultad}")
+            # Iniciar el juego con la dificultad seleccionada
+            print(f"DEBUG: Iniciando juego con dificultad: {dificultad}")
+            pantallaJuego = PantallaJuego(
+                self.pantalla,
+                self.colorFondoPersonalizado,
+                self.temaActual,
+                dificultad
+            )
+            volverDificultad = pantallaJuego.ejecutar()
             
-            # Loop para poder volver a la pantalla de dificultad desde el juego
-            while True:
-                # Crear la pantalla del juego con los ajustes personalizados
-                pantallaJuego = PantallaJuego(
-                    self.pantalla,
-                    self.colorFondoPersonalizado,
-                    self.temaActual,
-                    dificultad
-                )
-                
-                # Pasar la dificultad seleccionada al juego
-                pantallaJuego.dificultad = dificultad
-                
-                # Ejecutar el juego
-                volverAlMenu = pantallaJuego.ejecutar()
-                
-                # Si el usuario presionó ESC en el juego, volver a dificultad
-                if volverAlMenu:
-                    print("Volviendo a pantalla de dificultad desde el juego...")
-                    
-                    # Volver a mostrar pantalla de dificultad
-                    pantallaDificultad = PantallaDificultad(
-                        self.pantalla,
-                        self.colorFondoPersonalizado,
-                        self.temaActual
-                    )
-                    
-                    accion_nueva, dificultad_nueva = pantallaDificultad.ejecutar()
-                    
-                    if accion_nueva == 'JUGAR':
-                        # Usuario eligió otra dificultad, continuar el loop
-                        dificultad = dificultad_nueva
-                        print(f"Nueva dificultad seleccionada: {dificultad}")
-                        continue
-                    else:
-                        # Usuario presionó ESC o SALIR en dificultad, cerrar todo
-                        print("Cerrando aplicación desde pantalla de dificultad...")
-                        self.ejecutando = False
-                        break
-                else:
-                    # El juego terminó normalmente (sin ESC), cerrar aplicación
-                    print("Juego finalizado, cerrando aplicación...")
-                    self.ejecutando = False
-                    break
+            if volverDificultad:
+                # Si el juego pide volver, volver a abrir pantalla de dificultad
+                print("DEBUG: Volviendo a pantalla de dificultad")
+                self.abrirPantallaDificultad()
+            else:
+                # Si el juego terminó, cerrar la aplicación
+                print("Juego finalizado, cerrando aplicación...")
+                self.ejecutando = False
         
-        elif accion == 'VOLVER' or accion == 'QUIT':
-            # Si intenta volver o salir desde dificultad, cerrar todo
+        elif accion == 'VOLVER':
+            # Si intenta volver desde dificultad, NO permitir (cerrar todo)
+            print("Intento de volver desde dificultad - cerrando aplicación...")
+            self.ejecutando = False
+        
+        elif accion == 'QUIT':
+            # Si sale desde dificultad, cerrar todo
             print("Cerrando aplicación desde pantalla de dificultad...")
             self.ejecutando = False
 
