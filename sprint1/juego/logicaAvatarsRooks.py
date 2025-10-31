@@ -523,6 +523,13 @@ class GestorAvatars:
             "lenador": 20,
             "canibal": 10
         }
+        # Recompensas (monedas/puntos) por cada tipo de avatar
+        self.recompensas = {
+            "flechador": 10,
+            "escudero": 20,
+            "lenador": 40,
+            "canibal": 60
+        }
     
     def configurarDificultad(self):
         """Configura parámetros según la dificultad"""
@@ -609,14 +616,34 @@ class GestorAvatars:
                         break
         
         # Verificar colisiones de proyectiles de torres con avatars
+        # Acumular recompensas por avatars eliminados en esta actualización
+        # Ahora devolvemos una lista de eventos con coordenadas para que la UI cree monedas clickeables
+        earned_events = []
         for torre in torres:
             for proyectil in torre.proyectiles:
                 for avatar in self.avatarsActivos:
                     if proyectil.colisionaConAvatar(avatar):
-                        avatar.recibirDaño(proyectil.daño)
+                        try:
+                            died = avatar.recibirDaño(proyectil.daño)
+                        except Exception:
+                            died = False
                         proyectil.activo = False
                         print(f"💥 Proyectil de torre {torre.tipo} impactó {avatar.tipo}")
+                        if died:
+                            # Añadir recompensa según el tipo (fallback = 10)
+                            reward = getattr(self, 'recompensas', {}).get(avatar.tipo, 10)
+                            # Registrar evento con coordenadas de la torre
+                            try:
+                                ex = int(getattr(torre, 'x', 0))
+                                ey = int(getattr(torre, 'y', 0))
+                            except Exception:
+                                ex, ey = 0, 0
+                            earned_events.append({'x': ex, 'y': ey, 'amount': reward})
+                            print(f"💰 Evento: +{reward} monedas en ({ex},{ey}) por eliminar {avatar.tipo}")
                         break
+
+        # Devolver la lista de eventos de recompensa (posibles vacía)
+        return earned_events
     
     def actualizarSpawn(self):
         """Controla el spawn continuo de avatars"""
