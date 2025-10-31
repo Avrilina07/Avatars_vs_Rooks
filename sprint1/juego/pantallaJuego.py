@@ -72,10 +72,12 @@ class PantallaJuego:
             "T1": self.rooks.torreArena, "T2": self.rooks.torreRoca,
             "T3": self.rooks.torreFuego, "T4": self.rooks.torreAgua
         }
-        self.dinero = 500  
+        self.dinero = 5000  
         self.gestorAvatars = None
         self.gestorTorres = None
         self.juegoIniciado = False
+        # Animaciones temporales de monedas/puntos en pantalla
+        self.coinAnimations = []
         
         # === ESTADOS Y BOTONES DE DERROTA ===
         # Estados: "CONFIGURACION", "JUGANDO", "PERDIDO"
@@ -193,7 +195,7 @@ class PantallaJuego:
         # 1. Resetear variables de juego
         self.matriz = [[None for _ in range(self.columnas)] for _ in range(self.filas)]
         self.torreSeleccionada = None
-        self.dinero = 500
+        self.dinero = 5000
         self.gestorAvatars = None
         self.gestorTorres = None
         self.juegoIniciado = False
@@ -224,8 +226,41 @@ class PantallaJuego:
         if self.estadoJuego != "JUGANDO":
             return
         
-        self.gestorAvatars.actualizar(self.gestorTorres.torres)
+        # actualizar avatars y recoger recompensas (earned) devueltas por el gestor
+        earned = 0
+        try:
+            earned = self.gestorAvatars.actualizar(self.gestorTorres.torres) or 0
+        except Exception:
+            # si el gestor no devuelve valor, lo ignoramos
+            earned = 0
+
+        # actualizar torres
         self.gestorTorres.actualizar(self.gestorAvatars.avatarsActivos, FPS)
+
+        # aplicar recompensas al dinero del jugador y crear animación visual
+        if earned and earned > 0:
+            self.dinero += earned
+            # posición cerca del botón iniciar / parte superior de UI
+            try:
+                x = self.botonIniciar.rect.centerx
+                y = self.botonIniciar.rect.top - 30
+            except Exception:
+                x = self.ancho // 2
+                y = 100
+            self.coinAnimations.append({
+                'x': x,
+                'y': y,
+                'amount': earned,
+                'ttl': 60,  # frames
+                'vy': -0.6
+            })
+
+        # actualizar animaciones de monedas
+        for anim in self.coinAnimations[:]:
+            anim['y'] += anim.get('vy', -0.6)
+            anim['ttl'] -= 1
+            if anim['ttl'] <= 0:
+                self.coinAnimations.remove(anim)
         
         stats = self.gestorAvatars.obtenerEstadisticas()
         
@@ -339,7 +374,12 @@ class PantallaJuego:
                         
                         # Abrir userPage
                         userpage_path = os.path.join(carpeta_personalizacion, 'userPage.py')
-                        runpy.run_path(userpage_path, run_name='__main__')
+                        # Ejecutar userPage en proceso separado para evitar conflictos entre Pygame y Tk
+                        try:
+                            python_exec = sys.executable or 'python'
+                            subprocess.run([python_exec, userpage_path])
+                        except Exception as e:
+                            print(f"Error lanzando userPage como proceso: {e}")
                         
                         # Cerrar el juego completamente
                         self.ejecutando = False
@@ -571,6 +611,20 @@ class PantallaJuego:
         if self.estadoJuego == "PERDIDO":
             self.dibujarPantallaDerrota()
         
+        # Dibujar animaciones de monedas/puntos
+        try:
+            for anim in self.coinAnimations:
+                # pequeño icono de moneda
+                pygame.draw.circle(self.pantalla, (255, 215, 0), (int(anim['x']), int(anim['y'])), 10)
+                pygame.draw.circle(self.pantalla, (0, 0, 0), (int(anim['x']), int(anim['y'])), 10, 1)
+                # texto +cantidad
+                txt = f"+{anim['amount']}"
+                surf = self.fuenteInfo.render(txt, True, (255, 255, 255))
+                rect = surf.get_rect(center=(int(anim['x']) + 30, int(anim['y'])))
+                self.pantalla.blit(surf, rect)
+        except Exception:
+            pass
+
         # Actualizar pantalla
         pygame.display.flip()
 
