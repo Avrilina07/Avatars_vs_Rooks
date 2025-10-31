@@ -102,9 +102,6 @@ class PantallaJuego:
         self.colorUsuarioTexto = self.colorFondo.obtenerColorTextoBoton()
         self.fuenteUsuario = pygame.font.SysFont('Arial', 18, bold=True)
 
-    # Monedas persistentes en pantalla (clickeables)
-    # Cada moneda: {'x': int, 'y': int, 'amount': int, 'radius': int}
-    self.coins = []
 
     # === MÉTODOS DE UTILIDAD ===
     def cargarImagenTablero(self):
@@ -229,30 +226,36 @@ class PantallaJuego:
         if self.estadoJuego != "JUGANDO":
             return
         
-        # actualizar avatars y recoger eventos de recompensa (lista de dicts) devueltos por el gestor
-        earned_events = []
+        # actualizar avatars y recoger recompensas (earned) devueltas por el gestor
+        earned = 0
         try:
-            earned_events = self.gestorAvatars.actualizar(self.gestorTorres.torres) or []
+            earned = self.gestorAvatars.actualizar(self.gestorTorres.torres) or 0
         except Exception:
-            earned_events = []
+            # si el gestor no devuelve valor, lo ignoramos
+            earned = 0
 
         # actualizar torres
         self.gestorTorres.actualizar(self.gestorAvatars.avatarsActivos, FPS)
 
-        # Crear monedas persistentes en la zona de la torre a partir de los eventos.
-        # Importante: NO sumar el dinero automáticamente; el jugador debe clickear la moneda para cobrarla.
-        for ev in earned_events:
+        # aplicar recompensas al dinero del jugador y crear animación visual
+        if earned and earned > 0:
+            self.dinero += earned
+            # posición cerca del botón iniciar / parte superior de UI
             try:
-                ex = int(ev.get('x', 0))
-                ey = int(ev.get('y', 0))
-                amt = int(ev.get('amount', 0))
+                x = self.botonIniciar.rect.centerx
+                y = self.botonIniciar.rect.top - 30
             except Exception:
-                continue
+                x = self.ancho // 2
+                y = 100
+            self.coinAnimations.append({
+                'x': x,
+                'y': y,
+                'amount': earned,
+                'ttl': 60,  # frames
+                'vy': -0.6
+            })
 
-            # Crear moneda persistente en la posición de la torre
-            self.coins.append({'x': ex, 'y': ey, 'amount': amt, 'radius': 14})
-
-        # actualizar animaciones efímeras de monedas (si las hay)
+        # actualizar animaciones de monedas
         for anim in self.coinAnimations[:]:
             anim['y'] += anim.get('vy', -0.6)
             anim['ttl'] -= 1
