@@ -40,5 +40,11 @@
         "tema": "Claro (Predeterminado)",
         "volumen": 59,
         "ultima_cancion": "spotify:track:1LiN0Z98FkR1t0m8KmLcAH"
+    },
+    "Ale21": {
+        "color_fondo": "Cyan Azulado",
+        "tema": "Oscuro",
+        "volumen": 50,
+        "ultima_cancion": "spotify:track:1eDK4TD4cNzCgLOzAxKvus"
     }
 }
