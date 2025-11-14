@@ -36,11 +36,17 @@ class Moneda:
         pygame.draw.circle(pantalla, (218, 165, 32), (posX, posY), self.radio, 2)
 
 def generarMonedas(cantidad=3):
-    """Genera una lista de monedas en posiciones aleatorias del tablero"""
+    """Genera una lista de monedas en posiciones aleatorias del tablero
+    
+    Denominaciones posibles: 25, 50, 100 puntos
+    Con 3 monedas se generan exactamente 100 puntos (25+25+50 ó 25+50+25, etc.)
+    """
     monedas = []
+    valores_disponibles = [25, 50, 100]
+    
     for _ in range(cantidad):
         x = random.uniform(0.5, 4.5)  # Posiciones dentro del tablero 5x9
         y = random.uniform(0.5, 8.5)  # Evita bordes
-        valor = random.choice([5, 10, 15])  # Valores posibles
+        valor = random.choice(valores_disponibles)  # Valores posibles: 25, 50, 100
         monedas.append(Moneda(x, y, valor))
     return monedas

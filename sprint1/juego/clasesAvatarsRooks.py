@@ -12,7 +12,7 @@ class Avatars:
             "duracion_ataque_min": 1,  
             "duracion_ataque_max": 5  
             ,
-            "puntos": 10  # ← AGREGADO: puntos concedidos al morir
+            "puntos": 25  # Avatar débil: 25 puntos
         } 
         self.escudero = {
             "vida": 10,
@@ -21,7 +21,7 @@ class Avatars:
             "duracion_ataque_min": 1,
             "duracion_ataque_max": 5
             ,
-            "puntos": 15  # ← AGREGADO
+            "puntos": 30  # Avatar moderado: 30 puntos
         }
         self.lenador = {
             "vida": 25,
@@ -30,7 +30,7 @@ class Avatars:
             "duracion_ataque_min": 1,
             "duracion_ataque_max": 5
             ,
-            "puntos": 25  # ← AGREGADO
+            "puntos": 50  # Avatar fuerte: 50 puntos
         }
         self.canibal = {
             "vida": 25,
@@ -39,7 +39,7 @@ class Avatars:
             "duracion_ataque_min": 1,
             "duracion_ataque_max": 5
             ,
-            "puntos": 30  # ← AGREGADO
+            "puntos": 60  # Avatar muy fuerte: 60 puntos
         }
 
 class Rooks:

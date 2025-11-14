@@ -21,10 +21,17 @@ class HallOfFame:
         """
         pygame.init()
         
-        self.ancho = ancho
-        self.alto = alto
-        self.archivoPuntajes = archivoPuntajes
-        self.pantalla = pygame.display.set_mode((ancho, alto))
+        # Obtener dimensiones de pantalla completa
+        info = pygame.display.Info()
+        self.ancho = info.current_w
+        self.alto = info.current_h
+        
+        # Obtener la ruta correcta del archivo puntajes.json
+        carpeta_actual = os.path.dirname(os.path.abspath(__file__))
+        self.archivoPuntajes = os.path.join(carpeta_actual, archivoPuntajes)
+        
+        # Crear pantalla en modo pantalla completa
+        self.pantalla = pygame.display.set_mode((self.ancho, self.alto), pygame.FULLSCREEN)
         pygame.display.set_caption("Hall of Fame - Salón de la Fama")
         
         # Colores
@@ -58,8 +65,12 @@ class HallOfFame:
         self.puntajes = []
         self.cargarPuntajes()
         
-        # Botón de volver
-        self.botonVolver = pygame.Rect(ancho // 2 - 120, alto - 80, 240, 55)
+        # Botón de volver - Posicionado dinámicamente debajo del cuadro
+        margen = 60
+        altoTabla = self.alto - 300
+        yTabla = 150
+        yBoton = yTabla + altoTabla + 40  # 40 píxeles debajo del cuadro
+        self.botonVolver = pygame.Rect(self.ancho // 2 - 120, yBoton, 240, 55)
         
         self.reloj = pygame.time.Clock()
         self.ejecutando = True
@@ -103,7 +114,33 @@ class HallOfFame:
             print(f"{puntajesEliminados} puntaje(s) eliminado(s) por no entrar en el top 10")
         
         # Guardar los cambios
-        self.guardarPuntajes()
+        saved = self.guardarPuntajes()
+
+        # Publicar Top10 en Twitter si se guardó correctamente
+        if saved and self.puntajes:
+            try:
+                # import dinámico para evitar dependencia global
+                try:
+                    import importlib
+                    twtitterAPI = importlib.import_module('salonDeFama.twtitterAPI')
+                except Exception:
+                    # Fallback a import relativo
+                    from . import twtitterAPI
+
+                # Preparar lista de tuplas (pos, usuario, puntaje)
+                top_list = []
+                for idx, registro in enumerate(self.puntajes):
+                    nombre, pts = self.leerUsuarioYPuntaje(registro)
+                    top_list.append((idx + 1, nombre, pts))
+
+                # Publicar (dry_run=False para publicar realmente)
+                try:
+                    twtitterAPI.post_top10(top_list, dry_run=False)
+                except Exception as e:
+                    print(f"Error al publicar Top10 en Twitter: {e}")
+            except Exception:
+                # Si no existe el módulo de Twitter, no interrumpir el flujo
+                pass
     
     
     def guardarPuntajes(self):
@@ -197,7 +234,7 @@ class HallOfFame:
         """
         margen = 60
         anchoTabla = self.ancho - (margen * 2)
-        altoTabla = 460
+        altoTabla = self.alto - 300  # Agrandado para acomodar todos los usuarios
         yTabla = 150
         
         # Fondo de la tabla con efecto de brillo
@@ -222,12 +259,13 @@ class HallOfFame:
             superficie = self.fuenteSubtitulo.render(texto, True, self.colorTitulo)
             self.pantalla.blit(superficie, (x, yEncabezado))
         
-        # Línea separadora
+        # Línea separadora - Agrandada para nueva altura de tabla
+        margen = 60
         pygame.draw.line(
             self.pantalla,
             self.colorBorde,
-            (70, 220),
-            (self.ancho - 70, 220),
+            (margen, 220),
+            (self.ancho - margen, 220),
             2
         )
     

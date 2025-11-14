@@ -22,7 +22,7 @@ from componentes import Boton
 from clasesAvatarsRooks import Avatars, Rooks
 from logicaAvatarsRooks import GestorAvatars, GestorTorres
 from coins import generarMonedas
-from algoritmoDelBanquero import funcionDelBanquero, guardar_puntaje
+from algoritmoDelBanquero import funcionDelBanquero, guardarPuntaje
 from spotify_api import tempo, popularidad
 
 class PantallaJuego:
@@ -120,6 +120,19 @@ class PantallaJuego:
         self.colorUsuarioBorde = self.colorFondo.obtenerColorBorde()
         self.colorUsuarioTexto = self.colorFondo.obtenerColorTextoBoton()
         self.fuenteUsuario = pygame.font.SysFont('Arial', 18, bold=True)
+
+        # === BOTÓN "FAMA" (debajo del botón de usuario) ===
+        self.famaRadio = 35
+        self.famaCentroX = self.ancho - margen
+        self.famaCentroY = margen + 85  # 85 píxeles debajo del botón de usuario
+        self.famaTexto = "FAMA"
+        self.famaHover = False
+        
+        self.colorFamaNormal = self.colorFondo.obtenerColorBoton()
+        self.colorFamaHover = self.colorFondo.obtenerColorHoverBoton()
+        self.colorFamaBorde = self.colorFondo.obtenerColorBorde()
+        self.colorFamaTexto = self.colorFondo.obtenerColorTextoBoton()
+        self.fuenteFama = pygame.font.SysFont('Arial', 14, bold=True)
 
 
     # === MÉTODOS DE UTILIDAD ===
@@ -328,7 +341,7 @@ class PantallaJuego:
             
             # Guardar puntaje en el Hall of Fame
             nombreUsuario = self.usuarioTexto  # O implementar forma de obtener nombre real
-            guardar_puntaje(
+            guardarPuntaje(
                 puntaje=puntaje,
                 usuario=nombreUsuario,
                 tempo=tempo,
@@ -438,8 +451,14 @@ class PantallaJuego:
                          (mouseY - self.usuarioCentroY) ** 2) ** 0.5
             esta_sobre_usuario = distancia <= self.usuarioRadio
 
+            # Detectar hover en botón Fama
+            distancia_fama = ((mouseX - self.famaCentroX) ** 2 + 
+                              (mouseY - self.famaCentroY) ** 2) ** 0.5
+            esta_sobre_fama = distancia_fama <= self.famaRadio
+
             if evento.type == pygame.MOUSEMOTION:
                 self.usuarioHover = esta_sobre_usuario
+                self.famaHover = esta_sobre_fama
                 
                 # Manejo de hover de botones de torres e iniciar (si aplica)
                 if self.estadoJuego in ("CONFIGURACION", "JUGANDO"):
@@ -466,20 +485,21 @@ class PantallaJuego:
                             except Exception as e:
                                 print(f"Error al pausar música: {e}")
                         
-                        # Guardar el estado actual del juego si es necesario
-                        pygame.quit()
+                        # Importar userPage y mostrar
+                        from personalizacion.userPage import UserPage
+                        user_page = UserPage()
+                        # userPage debería tener un método para volver o retornar un valor
+                        # Por ahora lo ejecutamos y asumimos que retorna al juego
                         
-                        # Abrir userPage
-                        userpage_path = os.path.join(carpeta_personalizacion, 'userPage.py')
-                        runpy.run_path(userpage_path, run_name='__main__')
-                        
-                        # Cerrar el juego completamente
-                        self.ejecutando = False
-                        self.volver = False
-                        sys.exit(0)
+                        # Reiniciar Pygame para continuar en el juego
+                        pygame.init()
+                        self.pantalla = pygame.display.set_mode((self.ancho, self.alto))
+                        pygame.display.set_caption("Avatars VS Rooks - Salón de Batalla")
                         
                     except Exception as e:
                         print(f"Error al abrir perfil: {e}")
+                        import traceback
+                        traceback.print_exc()
                         # Intentar reiniciar Pygame si falla
                         try:
                             pygame.init()
@@ -489,6 +509,46 @@ class PantallaJuego:
                             self.volver = False
                     continue  # Importante: evitar que se procesen otros eventos
 
+                # Click en botón Fama
+                if esta_sobre_fama:
+                    print("Abriendo Salón de la Fama...")
+                    try:
+                        # Pausar música antes de abrir hallOfFame
+                        if self.spotify:
+                            try:
+                                print("DEBUG: Pausando música al abrir Hall of Fame")
+                                self.spotify.pausarMusica()
+                            except Exception as e:
+                                print(f"Error al pausar música: {e}")
+                        
+                        # Importar hallOfFame y mostrar
+                        from salonDeFama.hallOfFame import HallOfFame
+                        hof = HallOfFame()
+                        volver = hof.ejecutar()  # Retorna True si presiona "Volver"
+                        
+                        # Si retorna True, volvemos al juego, si no, salimos
+                        if not volver:
+                            self.ejecutando = False
+                            self.volver = False
+                            sys.exit(0)
+                        
+                        # Si volver es True, reiniciar Pygame para continuar en el juego
+                        pygame.init()
+                        self.pantalla = pygame.display.set_mode((self.ancho, self.alto))
+                        pygame.display.set_caption("Avatars VS Rooks - Salón de Batalla")
+                        
+                    except Exception as e:
+                        print(f"Error al abrir Hall of Fame: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        # Intentar reiniciar Pygame si falla
+                        try:
+                            pygame.init()
+                            self.pantalla = pygame.display.set_mode((self.ancho, self.alto))
+                        except:
+                            self.ejecutando = False
+                            self.volver = False
+                    continue  # Importante: evitar que se procesen otros eventos
                 # Lógica del estado PERDIDO (prioridad alta)
                 if self.estadoJuego == "PERDIDO":
                     if self.botonReiniciar.manejarEvento(evento):
@@ -571,6 +631,43 @@ class PantallaJuego:
         y = self.botonIniciar.rect.bottom + 40  
         rect = render.get_rect(center=(x, y))
         self.pantalla.blit(render, rect)
+    
+    def dibujarBarraMonedas(self):
+        """Dibuja barra de progreso de puntos hacia las monedas (solo en JUGANDO)"""
+        if self.estadoJuego != "JUGANDO":
+            return
+        
+        # Parámetros de la barra - Movida más a la derecha
+        ancho_barra = 250
+        alto_barra = 20
+        x_barra = self.botonIniciar.rect.centerx + 150  # Barra hacia la derecha
+        y = self.botonIniciar.rect.bottom + 40 + 90  # Debajo de estadísticas
+        
+        # Calcular porcentaje de progreso
+        progreso = min(self.puntosParaMonedas / self.umbralMonedas, 1.0)
+        ancho_relleno = int(ancho_barra * progreso)
+        
+        # Colores
+        color_fondo = (50, 50, 50)
+        color_relleno = (255, 215, 0)  # Oro
+        color_borde = (200, 200, 0)
+        
+        # Dibujar fondo de la barra
+        pygame.draw.rect(self.pantalla, color_fondo, (x_barra, y, ancho_barra, alto_barra))
+        
+        # Dibujar relleno de progreso
+        if ancho_relleno > 0:
+            pygame.draw.rect(self.pantalla, color_relleno, (x_barra, y, ancho_relleno, alto_barra))
+        
+        # Dibujar borde
+        pygame.draw.rect(self.pantalla, color_borde, (x_barra, y, ancho_barra, alto_barra), 2)
+        
+        # Dibujar texto de progreso (justo arriba de la barra)
+        fuenteProgresoMonedas = pygame.font.SysFont('Arial', 18, bold=True)
+        texto_progreso = f"Monedas: {self.puntosParaMonedas}/{self.umbralMonedas}"
+        render_progreso = fuenteProgresoMonedas.render(texto_progreso, True, (255, 255, 255))
+        rect_progreso = render_progreso.get_rect(center=(x_barra + ancho_barra // 2, y - 25))
+        self.pantalla.blit(render_progreso, rect_progreso)
 
     def dibujarEstadisticas(self):
         """Dibuja información del juego en curso debajo del Dinero"""
@@ -619,6 +716,18 @@ class PantallaJuego:
         
         textoSurface = self.fuenteUsuario.render(self.usuarioTexto, True, self.colorUsuarioTexto)
         textoRect = textoSurface.get_rect(center=(self.usuarioCentroX, self.usuarioCentroY))
+        self.pantalla.blit(textoSurface, textoRect)
+    
+    def dibujarBotonFama(self):
+        """Dibuja el botón redondo de Fama debajo del botón de usuario"""
+        color = self.colorFamaHover if self.famaHover else self.colorFamaNormal
+        
+        pygame.draw.circle(self.pantalla, color, (self.famaCentroX, self.famaCentroY), self.famaRadio)
+        pygame.draw.circle(self.pantalla, self.colorFamaBorde, 
+                           (self.famaCentroX, self.famaCentroY), self.famaRadio, 3)
+        
+        textoSurface = self.fuenteFama.render(self.famaTexto, True, self.colorFamaTexto)
+        textoRect = textoSurface.get_rect(center=(self.famaCentroX, self.famaCentroY))
         self.pantalla.blit(textoSurface, textoRect)
     
     def dibujarTorresMatriz(self):
@@ -711,9 +820,11 @@ class PantallaJuego:
             self.dibujarDinero()
             if self.estadoJuego == "JUGANDO":
                 self.dibujarEstadisticas()
+                self.dibujarBarraMonedas()  # Añadir barra de progreso de monedas
         
-        # 6. DIBUJO DEL BOTÓN "USUARIO"
+        # 6. DIBUJO DEL BOTÓN "USUARIO" Y "FAMA"
         self.dibujarBotonUsuario()
+        self.dibujarBotonFama()
 
         # 7. PANTALLA DE DERROTA
         if self.estadoJuego == "PERDIDO":
