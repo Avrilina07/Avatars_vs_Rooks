@@ -40,5 +40,17 @@
         "tema": "Claro (Predeterminado)",
         "volumen": 59,
         "ultima_cancion": "spotify:track:1LiN0Z98FkR1t0m8KmLcAH"
+    },
+    "diegogomez1": {
+        "color_fondo": "Amarillo Muy Claro",
+        "tema": "Claro (Predeterminado)",
+        "volumen": 85,
+        "ultima_cancion": "spotify:track:317yNhqC2oBNAEiiQob9Ru"
+    },
+    "josejose": {
+        "color_fondo": "Verde Lima Brillante",
+        "tema": "Intermedio",
+        "volumen": 50,
+        "ultima_cancion": "spotify:track:190jyVPHYjAqEaOGmMzdyk"
     }
 }

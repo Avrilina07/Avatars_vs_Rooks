@@ -211,5 +211,49 @@
         "tieneFotoRegistrada": true,
         "rutaFoto": "dataBase\\imagenes\\bebe2.png",
         "foto": "dataBase\\imagenes\\bebe2.png"
+    },
+    {
+        "nombre": "diego",
+        "apellidos": "gomez",
+        "usuario": "diegogomez1",
+        "email": "gAAAAABpF4s7LmN14KC9MHAIWVcyAX6ijhZwEy8ZaKpS-SwkwPZ1vxd9EEzOCmIfwHjzUJVIrsxKwE9345AA9GMX4jtvOMWJRSSuoCfZybIFw5W4oLE9aZA=",
+        "contrasenaHash": "$2b$12$hXQhRtx.mDvdXpRNI85QD.rukYM.fwLXciGKcNXsJlPrvDudCarVe",
+        "fechaNacimiento": "11/11/2011",
+        "telefono": "gAAAAABpF4s7rAq6nfxt6dPdxq0Xd-Eq4ZUNzxbk1RDOp8ml8TEN3MfugrGru2UtCsbxyB0bEzLeidOSjhrDFTkXijbLNfLL3_ZOM0KwvmUqVsbyZLXFtv4=",
+        "preguntaSeguridad": "¿Cuál es el mejor equipo de futbol?",
+        "respuestaSeguridad": "gAAAAABpF4s77gXcqSvRr2tLLY8YWE_fMHcja-Zm1baapE-2LsFOc7z4PNJXIUbBP57v_pNBrsFbQJFweW6YxiLOq0ebV4TzPA==",
+        "personalizado": true,
+        "fechaRegistro": "14/11/2025 14:04:11",
+        "mmaa": "gAAAAABpF4s7pojLnzIklVtq5uo0obO5zHVO5g9ncyTYi7U0iamQLvTZ8VxtPTGdmp7UipTQBWE1RNwvXE44JVZXgr143rHjpg==",
+        "colorFondo": [
+            255,
+            255,
+            173
+        ],
+        "colorFondo_nombre": "Amarillo Muy Claro",
+        "tarjetaCredito": "1234567891234561",
+        "cvv": "123",
+        "fechaCaducidad": "12/26",
+        "tieneFotoRegistrada": false
+    },
+    {
+        "nombre": "jose",
+        "apellidos": "rodriguez",
+        "usuario": "josejose",
+        "email": "gAAAAABpF6YSTzq8P9XCINMol-CtwyJ1n3QG1T6on0VYyJAisI_5yrswuGIly3nglI7WsIrcDT4XixMCZcOqJ0HhU0y97Z1QRg==",
+        "contrasenaHash": "$2b$12$tt.Wmsdot7ySytjwAtNpg.D8sklVR5TJr7fFhhhPWukFtfN1AFMtu",
+        "fechaNacimiento": "07/11/2014",
+        "telefono": "gAAAAABpF6YS70Br_iBzX9v4puhF_c9EgtAi7eMfMbe_EdqonCRWKfVUfbfnmfDpBSQ_Sz6Tr65sOpRzQCmPh1zfidiLovh2hVXWi7TQ_zArEpOFd0C1EVM=",
+        "preguntaSeguridad": "¿Cuál es el mejor equipo de futbol?",
+        "respuestaSeguridad": "gAAAAABpF6YS4Dwu3PDmfpt05xKehXIq_aEgJCswVGueHUkGUQbvzo0ANI2V1EGqmx8BQjelxJn4R5zSUfkiEFssYLf6ydslfA==",
+        "personalizado": true,
+        "fechaRegistro": "14/11/2025 15:58:42",
+        "mmaa": "gAAAAABpF6YSeleNu-xZFHVFRYduD6j_GsuSrBig7LpSXragvuMs8CufywWbQ-ff9cErNaTC9iLuyeJuHFrLa_ByxDoKtY-R1g==",
+        "colorFondo": [
+            130,
+            251,
+            6
+        ],
+        "colorFondo_nombre": "Verde Lima Brillante"
     }
 ]

@@ -3,6 +3,7 @@ import sys
 import os
 import subprocess
 import runpy
+import json
 
 # Configuración para que el módulo encuentre las carpetas necesarias
 carpeta_actual = os.path.dirname(os.path.abspath(__file__))
@@ -99,9 +100,10 @@ class PantallaJuego:
         self.gestorTorres = None
         self.juegoIniciado = False
         
-        # === ESTADOS Y BOTONES DE DERROTA ===
+        # === ESTADOS Y BOTONES DE DERROTA/VICTORIA ===
         self.estadoJuego = "CONFIGURACION" 
         self.botonReiniciar = self.crearBotonReiniciar()
+        self.botonJugarOtraVez = self.crearBotonJugarOtraVez()
         
         # === BOTONES RECTANGULARES ===
         self.botonesTorres = self.crearBotonesTorres()
@@ -112,7 +114,7 @@ class PantallaJuego:
         self.usuarioRadio = 35
         self.usuarioCentroX = self.ancho - margen
         self.usuarioCentroY = margen
-        self.usuarioTexto = "USER"
+        self.usuarioTexto = self.obtenerUsuarioLogueado()  # ← Obtiene del login
         self.usuarioHover = False
         
         self.colorUsuarioNormal = self.colorFondo.obtenerColorBoton()
@@ -121,8 +123,57 @@ class PantallaJuego:
         self.colorUsuarioTexto = self.colorFondo.obtenerColorTextoBoton()
         self.fuenteUsuario = pygame.font.SysFont('Arial', 18, bold=True)
 
+        # === BOTÓN "FAMA" (debajo del botón de usuario) ===
+        self.famaRadio = 35
+        self.famaCentroX = self.ancho - margen
+        self.famaCentroY = margen + 85  # 85 píxeles debajo del botón de usuario
+        self.famaTexto = "FAMA"
+        self.famaHover = False
+        
+        self.colorFamaNormal = self.colorFondo.obtenerColorBoton()
+        self.colorFamaHover = self.colorFondo.obtenerColorHoverBoton()
+        self.colorFamaBorde = self.colorFondo.obtenerColorBorde()
+        self.colorFamaTexto = self.colorFondo.obtenerColorTextoBoton()
+        self.fuenteFama = pygame.font.SysFont('Arial', 14, bold=True)
+
 
     # === MÉTODOS DE UTILIDAD ===
+    
+    def obtenerUsuarioLogueado(self):
+        """
+        Lee el nombre del usuario que hizo login desde session_user.json
+        
+        Returns:
+            str: Nombre del usuario logueado o "USER" si no se encuentra
+        """
+        try:
+            # Ruta al archivo de sesión (sprint1/dataBase/session_user.json)
+            carpeta_sprint1 = os.path.dirname(carpeta_actual)
+            carpeta_database = os.path.join(carpeta_sprint1, 'dataBase')
+            archivo_sesion = os.path.join(carpeta_database, 'session_user.json')
+            
+            # Leer archivo de sesión
+            if os.path.exists(archivo_sesion):
+                with open(archivo_sesion, 'r', encoding='utf-8') as f:
+                    sesion = json.load(f)
+                    
+                # Obtener nombre de usuario (puede estar en diferentes claves)
+                nombre = (sesion.get('usuario') or 
+                         sesion.get('username') or 
+                         sesion.get('user') or 
+                         sesion.get('nombre') or
+                         "USER")
+                
+                print(f"👤 Usuario logueado: {nombre}")
+                return nombre
+            else:
+                print("⚠️  Archivo session_user.json no encontrado")
+                return "USER"
+                
+        except Exception as e:
+            print(f"❌ Error al leer usuario logueado: {e}")
+            return "USER"
+    
     def cargarImagenTablero(self):
         """Carga y escala la imagen del tablero"""
         try:
@@ -190,6 +241,24 @@ class PantallaJuego:
 
         boton.colorNormal = (0, 150, 0)
         boton.colorHover = (0, 200, 0)
+        boton.colorBorde = self.colorFondo.obtenerColorBorde()
+        boton.colorTexto = (255, 255, 255)
+
+        return boton
+
+    def crearBotonJugarOtraVez(self):
+        """Crea el botón ¿JUGAMOS OTRA VEZ?, centrado en la pantalla para la victoria."""
+        boton = Boton(
+            self.ancho // 2, 
+            self.alto // 2 + 100, 
+            400,  
+            80,   
+            "¿JUGAMOS OTRA VEZ?",
+            32
+        )
+
+        boton.colorNormal = (0, 150, 200)  # Azul celeste
+        boton.colorHover = (0, 200, 255)   # Azul más claro
         boton.colorBorde = self.colorFondo.obtenerColorBorde()
         boton.colorTexto = (255, 255, 255)
 
@@ -345,7 +414,7 @@ class PantallaJuego:
             else:
                 print(f"🎉 ¡GANASTE! {stats['resultado']}")
                 print(f"Puntaje final: {puntaje:.2f}")
-                self.ejecutando = False
+                self.estadoJuego = "GANADO"
             
     def obtenerCasillaClick(self, mouseX, mouseY):
         """Convierte coordenadas de mouse a fila/columna"""
@@ -451,6 +520,9 @@ class PantallaJuego:
                 
                 if self.estadoJuego == "PERDIDO":
                     self.botonReiniciar.manejarEvento(evento)
+                
+                if self.estadoJuego == "GANADO":
+                    self.botonJugarOtraVez.manejarEvento(evento)
 
             elif evento.type == pygame.MOUSEBUTTONDOWN:
                 
@@ -466,12 +538,34 @@ class PantallaJuego:
                             except Exception as e:
                                 print(f"Error al pausar música: {e}")
                         
-                        # Guardar el estado actual del juego si es necesario
-                        pygame.quit()
+                        # Construir ruta absoluta a personalizacion
+                        ruta_userPage = os.path.join(carpeta_personalizacion, 'userPage.py')
                         
-                        # Abrir userPage
-                        userpage_path = os.path.join(carpeta_personalizacion, 'userPage.py')
-                        runpy.run_path(userpage_path, run_name='__main__')
+                        if os.path.exists(ruta_userPage):
+                            # Importar y ejecutar userPage usando importlib
+                            import importlib.util
+                            import tkinter as tk
+                            
+                            # Ocultar ventana de Pygame temporalmente
+                            pygame.display.iconify()
+                            
+                            # Cargar el módulo
+                            spec = importlib.util.spec_from_file_location("userPage", ruta_userPage)
+                            modulo_user = importlib.util.module_from_spec(spec)
+                            spec.loader.exec_module(modulo_user)
+                            
+                            # Crear ventana de Tkinter y ejecutar
+                            root = tk.Tk()
+                            app = modulo_user.userProfilePage(root)
+                            root.mainloop()
+                            
+                            # Limpiar Tkinter
+                            try:
+                                root.destroy()
+                            except:
+                                pass
+                        else:
+                            print(f"No se encontró userPage.py en: {carpeta_personalizacion}")
                         
                         # Cerrar el juego completamente
                         self.ejecutando = False
@@ -489,11 +583,68 @@ class PantallaJuego:
                             self.volver = False
                     continue  # Importante: evitar que se procesen otros eventos
 
+                # Click en botón Fama
+                if esta_sobre_fama:
+                    print("Abriendo Salón de la Fama...")
+                    try:
+                        # Pausar música antes de abrir hallOfFame
+                        if self.spotify:
+                            try:
+                                print("DEBUG: Pausando música al abrir Hall of Fame")
+                                self.spotify.pausarMusica()
+                            except Exception as e:
+                                print(f"Error al pausar música: {e}")
+                        
+                        # Construir ruta absoluta a salonDeFama
+                        ruta_hallOfFame = os.path.join(carpeta_salon_fama, 'hallOfFame.py')
+                        
+                        if os.path.exists(ruta_hallOfFame):
+                            # Importar directamente usando importlib
+                            import importlib.util
+                            spec = importlib.util.spec_from_file_location("hallOfFame", ruta_hallOfFame)
+                            modulo_hof = importlib.util.module_from_spec(spec)
+                            spec.loader.exec_module(modulo_hof)
+                            
+                            # Crear instancia y ejecutar
+                            hof = modulo_hof.HallOfFame()
+                            volver = hof.ejecutar()
+                            
+                            # Si retorna True, volvemos al juego, si no, salimos
+                            if not volver:
+                                self.ejecutando = False
+                                self.volver = False
+                                sys.exit(0)
+                        else:
+                            print(f"No se encontró hallOfFame.py en: {carpeta_salon_fama}")
+                        
+                        # Si volver es True, reiniciar Pygame para continuar en el juego
+                        pygame.init()
+                        self.pantalla = pygame.display.set_mode((self.ancho, self.alto))
+                        pygame.display.set_caption("Avatars VS Rooks - Salón de Batalla")
+                        
+                    except Exception as e:
+                        print(f"Error al abrir Hall of Fame: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        # Intentar reiniciar Pygame si falla
+                        try:
+                            pygame.init()
+                            self.pantalla = pygame.display.set_mode((self.ancho, self.alto))
+                        except:
+                            self.ejecutando = False
+                            self.volver = False
+                    continue  # Importante: evitar que se procesen otros eventos
+                
                 # Lógica del estado PERDIDO (prioridad alta)
                 if self.estadoJuego == "PERDIDO":
                     if self.botonReiniciar.manejarEvento(evento):
                         self.reiniciarJuego()
-                        
+                        continue
+                
+                # Lógica del estado GANADO (nueva funcionalidad)
+                if self.estadoJuego == "GANADO":
+                    if self.botonJugarOtraVez.manejarEvento(evento):
+                        self.reiniciarJuego()
                         continue
 
                 # Lógica de SELECCIÓN de torres (en CONFIGURACION y JUGANDO)
@@ -558,6 +709,29 @@ class PantallaJuego:
         
         # 3. Botón Reiniciar
         self.botonReiniciar.dibujar(self.pantalla)
+
+    def dibujarPantallaVictoria(self):
+        """Dibuja el overlay oscuro, el mensaje de victoria y el botón de Jugar Otra Vez."""
+        
+        # 1. Overlay oscuro
+        overlay = pygame.Surface((self.ancho, self.alto))
+        overlay.set_alpha(200) 
+        overlay.fill((0, 0, 0))
+        self.pantalla.blit(overlay, (0, 0))
+        
+        # 2. Mensaje "¡HAZ GANADO, FELICIDADES!"
+        fuenteMensaje = pygame.font.SysFont('Arial', 80, bold=True)
+        mensaje1 = fuenteMensaje.render("¡HAZ GANADO,", True, (0, 255, 0))  # Verde
+        mensaje2 = fuenteMensaje.render("FELICIDADES!", True, (255, 215, 0))  # Dorado
+        
+        mensaje1Rect = mensaje1.get_rect(center=(self.ancho // 2, self.alto // 2 - 100))
+        mensaje2Rect = mensaje2.get_rect(center=(self.ancho // 2, self.alto // 2 - 20))
+        
+        self.pantalla.blit(mensaje1, mensaje1Rect)
+        self.pantalla.blit(mensaje2, mensaje2Rect)
+        
+        # 3. Botón Jugar Otra Vez
+        self.botonJugarOtraVez.dibujar(self.pantalla)
 
     def dibujarDinero(self):
         """Muestra el dinero actual del jugador debajo del botón Iniciar Juego"""
@@ -680,7 +854,7 @@ class PantallaJuego:
         # 3. Dibujo de Torres/Avatars
         if self.estadoJuego == "CONFIGURACION":
             self.dibujarTorresMatriz() 
-        elif self.estadoJuego in ("JUGANDO", "PERDIDO"):
+        elif self.estadoJuego in ("JUGANDO", "PERDIDO", "GANADO"):
             if self.gestorTorres:
                 self.gestorTorres.dibujar(self.pantalla)
             if self.gestorAvatars:
@@ -707,7 +881,7 @@ class PantallaJuego:
             self.botonIniciar.dibujar(self.pantalla) 
         
         # 5. Dinero y Estadísticas 
-        if self.estadoJuego != "PERDIDO":
+        if self.estadoJuego not in ("PERDIDO", "GANADO"):
             self.dibujarDinero()
             if self.estadoJuego == "JUGANDO":
                 self.dibujarEstadisticas()
@@ -718,6 +892,10 @@ class PantallaJuego:
         # 7. PANTALLA DE DERROTA
         if self.estadoJuego == "PERDIDO":
             self.dibujarPantallaDerrota()
+        
+        # 8. PANTALLA DE VICTORIA (NUEVA)
+        if self.estadoJuego == "GANADO":
+            self.dibujarPantallaVictoria()
         
         # Actualizar pantalla
         pygame.display.flip()
