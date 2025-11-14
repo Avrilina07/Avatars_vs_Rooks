@@ -1,0 +1,112 @@
+[
+    {
+        "usuario": "USER",
+        "puntaje": 100.33,
+        "fecha": "2025-11-14 14:56:26",
+        "stats": {
+            "tempo": 120,
+            "popularidad": 50,
+            "avatarsMatados": 11,
+            "puntosParaMonedas": 85
+        }
+    },
+    {
+        "usuario": "USER",
+        "puntaje": 100.1,
+        "fecha": "2025-11-14 14:54:07",
+        "stats": {
+            "tempo": 120,
+            "popularidad": 50,
+            "avatarsMatados": 7,
+            "puntosParaMonedas": 85
+        }
+    },
+    {
+        "usuario": "USER",
+        "puntaje": 98.04,
+        "fecha": "2025-11-14 14:11:53",
+        "stats": {
+            "tempo": 120,
+            "popularidad": 50,
+            "avatarsMatados": 2,
+            "puntosParaMonedas": 75
+        }
+    },
+    {
+        "usuario": "USER",
+        "puntaje": 97.68,
+        "fecha": "2025-11-14 14:14:33",
+        "stats": {
+            "tempo": 120,
+            "popularidad": 50,
+            "avatarsMatados": 12,
+            "puntosParaMonedas": 70
+        }
+    },
+    {
+        "usuario": "USER",
+        "puntaje": 97.34,
+        "fecha": "2025-11-14 14:12:56",
+        "stats": {
+            "tempo": 120,
+            "popularidad": 50,
+            "avatarsMatados": 6,
+            "puntosParaMonedas": 70
+        }
+    },
+    {
+        "usuario": "USER",
+        "puntaje": 90.1,
+        "fecha": "2025-11-14 15:08:43",
+        "stats": {
+            "tempo": 120,
+            "popularidad": 50,
+            "avatarsMatados": 16,
+            "puntosParaMonedas": 35
+        }
+    },
+    {
+        "usuario": "USER",
+        "puntaje": 84.81,
+        "fecha": "2025-11-14 10:56:20",
+        "stats": {
+            "tempo": 120,
+            "popularidad": 50,
+            "avatarsMatados": 2,
+            "puntosParaMonedas": 20
+        }
+    },
+    {
+        "usuario": "USER",
+        "puntaje": 83.15,
+        "fecha": "2025-11-14 14:52:55",
+        "stats": {
+            "tempo": 120,
+            "popularidad": 50,
+            "avatarsMatados": 7,
+            "puntosParaMonedas": 15
+        }
+    },
+    {
+        "usuario": "USER",
+        "puntaje": 80.62,
+        "fecha": "2025-11-14 10:57:00",
+        "stats": {
+            "tempo": 120,
+            "popularidad": 50,
+            "avatarsMatados": 1,
+            "puntosParaMonedas": 10
+        }
+    },
+    {
+        "usuario": "USER",
+        "puntaje": 77.83,
+        "fecha": "2025-11-14 14:55:13",
+        "stats": {
+            "tempo": 120,
+            "popularidad": 50,
+            "avatarsMatados": 4,
+            "puntosParaMonedas": 5
+        }
+    }
+]
