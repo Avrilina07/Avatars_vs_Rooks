@@ -108,5 +108,16 @@
             "avatarsMatados": 13,
             "puntosParaMonedas": 80
         }
+    },
+    {
+        "usuario": "hola23",
+        "puntaje": 14.32,
+        "fecha": "2025-11-16 12:50:58",
+        "stats": {
+            "tempo": 120,
+            "popularidad": 5.0,
+            "avatarsMatados": 9,
+            "puntosParaMonedas": 95
+        }
     }
 ]
