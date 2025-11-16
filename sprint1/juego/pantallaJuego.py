@@ -3,6 +3,7 @@ import sys
 import os
 import subprocess
 import runpy
+import json
 
 # Configuración para que el módulo encuentre las carpetas necesarias
 carpeta_actual = os.path.dirname(os.path.abspath(__file__))
@@ -22,8 +23,7 @@ from componentes import Boton
 from clasesAvatarsRooks import Avatars, Rooks
 from logicaAvatarsRooks import GestorAvatars, GestorTorres
 from coins import generarMonedas
-from algoritmoDelBanquero import funcionDelBanquero, guardarPuntaje
-from spotify_api import tempo, popularidad
+from algoritmoDelBanquero import calcularYGuardarPuntajeDesdeSpotify
 
 class PantallaJuego:
     """Pantalla de colocación de torres en el tablero 9x5"""
@@ -91,7 +91,7 @@ class PantallaJuego:
             "T1": self.rooks.torreArena, "T2": self.rooks.torreRoca,
             "T3": self.rooks.torreFuego, "T4": self.rooks.torreAgua
         }
-        self.dinero = 350
+        self.dinero = 3500
         self.monedas = []
         self.puntosParaMonedas = 0  
         self.umbralMonedas = 100     
@@ -99,9 +99,10 @@ class PantallaJuego:
         self.gestorTorres = None
         self.juegoIniciado = False
         
-        # === ESTADOS Y BOTONES DE DERROTA ===
+        # === ESTADOS Y BOTONES DE DERROTA/VICTORIA ===
         self.estadoJuego = "CONFIGURACION" 
         self.botonReiniciar = self.crearBotonReiniciar()
+        self.botonJugarOtraVez = self.crearBotonJugarOtraVez()
         
         # === BOTONES RECTANGULARES ===
         self.botonesTorres = self.crearBotonesTorres()
@@ -112,7 +113,7 @@ class PantallaJuego:
         self.usuarioRadio = 35
         self.usuarioCentroX = self.ancho - margen
         self.usuarioCentroY = margen
-        self.usuarioTexto = "USER"
+        self.usuarioTexto = self.obtenerUsuarioLogueado()  # ← Obtiene del login
         self.usuarioHover = False
         
         self.colorUsuarioNormal = self.colorFondo.obtenerColorBoton()
@@ -136,6 +137,42 @@ class PantallaJuego:
 
 
     # === MÉTODOS DE UTILIDAD ===
+    
+    def obtenerUsuarioLogueado(self):
+        """
+        Lee el nombre del usuario que hizo login desde session_user.json
+        
+        Returns:
+            str: Nombre del usuario logueado o "USER" si no se encuentra
+        """
+        try:
+            # Ruta al archivo de sesión (sprint1/dataBase/session_user.json)
+            carpeta_sprint1 = os.path.dirname(carpeta_actual)
+            carpeta_database = os.path.join(carpeta_sprint1, 'dataBase')
+            archivo_sesion = os.path.join(carpeta_database, 'session_user.json')
+            
+            # Leer archivo de sesión
+            if os.path.exists(archivo_sesion):
+                with open(archivo_sesion, 'r', encoding='utf-8') as f:
+                    sesion = json.load(f)
+                    
+                # Obtener nombre de usuario (puede estar en diferentes claves)
+                nombre = (sesion.get('usuario') or 
+                         sesion.get('username') or 
+                         sesion.get('user') or 
+                         sesion.get('nombre') or
+                         "USER")
+                
+                print(f"👤 Usuario logueado: {nombre}")
+                return nombre
+            else:
+                print("⚠️  Archivo session_user.json no encontrado")
+                return "USER"
+                
+        except Exception as e:
+            print(f"❌ Error al leer usuario logueado: {e}")
+            return "USER"
+    
     def cargarImagenTablero(self):
         """Carga y escala la imagen del tablero"""
         try:
@@ -208,6 +245,24 @@ class PantallaJuego:
 
         return boton
 
+    def crearBotonJugarOtraVez(self):
+        """Crea el botón ¿JUGAMOS OTRA VEZ?, centrado en la pantalla para la victoria."""
+        boton = Boton(
+            self.ancho // 2, 
+            self.alto // 2 + 100, 
+            400,  
+            80,   
+            "¿JUGAMOS OTRA VEZ?",
+            32
+        )
+
+        boton.colorNormal = (0, 150, 200)  # Azul celeste
+        boton.colorHover = (0, 200, 255)   # Azul más claro
+        boton.colorBorde = self.colorFondo.obtenerColorBorde()
+        boton.colorTexto = (255, 255, 255)
+
+        return boton
+
     def crearBotonesTorres(self):
         """Crea los botones de las 4 torres con el layout 2x2"""
         botones = []
@@ -267,7 +322,7 @@ class PantallaJuego:
         # 1. Resetear variables de juego
         self.matriz = [[None for _ in range(self.columnas)] for _ in range(self.filas)]
         self.torreSeleccionada = None
-        self.dinero = 350
+        self.dinero = 3500
         self.gestorAvatars = None
         self.gestorTorres = None
         self.juegoIniciado = False
@@ -324,30 +379,20 @@ class PantallaJuego:
         # Generar monedas cuando se alcance el umbral
         if self.puntosParaMonedas >= self.umbralMonedas:
             self.puntosParaMonedas -= self.umbralMonedas
-            self.monedas.extend(generarMonedas())
+            # Pasar dimensiones del grid para generar monedas solo dentro
+            self.monedas.extend(generarMonedas(cantidad=3, gridFilas=self.filas, gridColumnas=self.columnas))
             print(f"💰 ¡Monedas generadas! ({len(self.monedas)} monedas nuevas)")
         
         stats = self.gestorAvatars.obtenerEstadisticas()
         
         if stats["perdio"] or stats["gano"]:
-            # Calcular puntaje usando el algoritmo del banquero
-            puntaje = funcionDelBanquero(
-                tempo=tempo,
-                popularidad=popularidad,
+            # Calcular y guardar puntaje usando el algoritmo del banquero
+            # El usuario se obtiene automáticamente de session_user.json
+            # Tempo y popularidad se obtienen de spotify_api
+            puntaje = calcularYGuardarPuntajeDesdeSpotify(
                 avatarsMatados=self.gestorAvatars.avatarsMatados,
                 puntosParaMonedas=self.puntosParaMonedas,
-                limiteMaximo=1000  # Ajustar según necesidad
-            )
-            
-            # Guardar puntaje en el Hall of Fame
-            nombreUsuario = self.usuarioTexto  # O implementar forma de obtener nombre real
-            guardarPuntaje(
-                puntaje=puntaje,
-                usuario=nombreUsuario,
-                tempo=tempo,
-                popularidad=popularidad,
-                avatarsMatados=self.gestorAvatars.avatarsMatados,
-                puntosParaMonedas=self.puntosParaMonedas
+                limiteMaximo=1000
             )
             
             # Actualizar estado según victoria/derrota
@@ -358,7 +403,7 @@ class PantallaJuego:
             else:
                 print(f"🎉 ¡GANASTE! {stats['resultado']}")
                 print(f"Puntaje final: {puntaje:.2f}")
-                self.ejecutando = False
+                self.estadoJuego = "GANADO"
             
     def obtenerCasillaClick(self, mouseX, mouseY):
         """Convierte coordenadas de mouse a fila/columna"""
@@ -470,6 +515,9 @@ class PantallaJuego:
                 
                 if self.estadoJuego == "PERDIDO":
                     self.botonReiniciar.manejarEvento(evento)
+                
+                if self.estadoJuego == "GANADO":
+                    self.botonJugarOtraVez.manejarEvento(evento)
 
             elif evento.type == pygame.MOUSEBUTTONDOWN:
                 
@@ -485,11 +533,34 @@ class PantallaJuego:
                             except Exception as e:
                                 print(f"Error al pausar música: {e}")
                         
-                        # Importar userPage y mostrar
-                        from personalizacion.userPage import UserPage
-                        user_page = UserPage()
-                        # userPage debería tener un método para volver o retornar un valor
-                        # Por ahora lo ejecutamos y asumimos que retorna al juego
+                        # Construir ruta absoluta a personalizacion
+                        ruta_userPage = os.path.join(carpeta_personalizacion, 'userPage.py')
+                        
+                        if os.path.exists(ruta_userPage):
+                            # Importar y ejecutar userPage usando importlib
+                            import importlib.util
+                            import tkinter as tk
+                            
+                            # Ocultar ventana de Pygame temporalmente
+                            pygame.display.iconify()
+                            
+                            # Cargar el módulo
+                            spec = importlib.util.spec_from_file_location("userPage", ruta_userPage)
+                            modulo_user = importlib.util.module_from_spec(spec)
+                            spec.loader.exec_module(modulo_user)
+                            
+                            # Crear ventana de Tkinter y ejecutar
+                            root = tk.Tk()
+                            app = modulo_user.userProfilePage(root)
+                            root.mainloop()
+                            
+                            # Limpiar Tkinter
+                            try:
+                                root.destroy()
+                            except:
+                                pass
+                        else:
+                            print(f"No se encontró userPage.py en: {carpeta_personalizacion}")
                         
                         # Reiniciar Pygame para continuar en el juego
                         pygame.init()
@@ -521,16 +592,27 @@ class PantallaJuego:
                             except Exception as e:
                                 print(f"Error al pausar música: {e}")
                         
-                        # Importar hallOfFame y mostrar
-                        from salonDeFama.hallOfFame import HallOfFame
-                        hof = HallOfFame()
-                        volver = hof.ejecutar()  # Retorna True si presiona "Volver"
+                        # Construir ruta absoluta a salonDeFama
+                        ruta_hallOfFame = os.path.join(carpeta_salon_fama, 'hallOfFame.py')
                         
-                        # Si retorna True, volvemos al juego, si no, salimos
-                        if not volver:
-                            self.ejecutando = False
-                            self.volver = False
-                            sys.exit(0)
+                        if os.path.exists(ruta_hallOfFame):
+                            # Importar directamente usando importlib
+                            import importlib.util
+                            spec = importlib.util.spec_from_file_location("hallOfFame", ruta_hallOfFame)
+                            modulo_hof = importlib.util.module_from_spec(spec)
+                            spec.loader.exec_module(modulo_hof)
+                            
+                            # Crear instancia y ejecutar
+                            hof = modulo_hof.HallOfFame()
+                            volver = hof.ejecutar()
+                            
+                            # Si retorna True, volvemos al juego, si no, salimos
+                            if not volver:
+                                self.ejecutando = False
+                                self.volver = False
+                                sys.exit(0)
+                        else:
+                            print(f"No se encontró hallOfFame.py en: {carpeta_salon_fama}")
                         
                         # Si volver es True, reiniciar Pygame para continuar en el juego
                         pygame.init()
@@ -549,11 +631,17 @@ class PantallaJuego:
                             self.ejecutando = False
                             self.volver = False
                     continue  # Importante: evitar que se procesen otros eventos
+                
                 # Lógica del estado PERDIDO (prioridad alta)
                 if self.estadoJuego == "PERDIDO":
                     if self.botonReiniciar.manejarEvento(evento):
                         self.reiniciarJuego()
-                        
+                        continue
+                
+                # Lógica del estado GANADO (nueva funcionalidad)
+                if self.estadoJuego == "GANADO":
+                    if self.botonJugarOtraVez.manejarEvento(evento):
+                        self.reiniciarJuego()
                         continue
 
                 # Lógica de SELECCIÓN de torres (en CONFIGURACION y JUGANDO)
@@ -570,18 +658,9 @@ class PantallaJuego:
                         self.iniciarJuego()
                         continue
 
-                # Lógica de click en el tablero (Colocar/Quitar)
-                if self.estadoJuego in ("CONFIGURACION", "JUGANDO"):
-                    casilla = self.obtenerCasillaClick(mouseX, mouseY)
-                    if casilla:
-                        fila, columna = casilla
-                        
-                        if evento.button == 1:  # Click izquierdo: Colocar
-                            self.colocarTorre(fila, columna)
-                        elif evento.button == 3:  # Click derecho: Quitar
-                            self.quitarTorre(fila, columna)
-                
-                # Detectar clicks en monedas (solo cuando está JUGANDO)
+                # Detectar clicks en monedas PRIMERO (solo cuando está JUGANDO)
+                # Esto tiene prioridad sobre colocar torres
+                moneda_clickeada = False
                 if self.estadoJuego == "JUGANDO" and evento.button == 1:
                     puntosGanados = 0
                     tamañoCelda = self.anchoCasilla + self.gridAnchoExtra
@@ -591,12 +670,26 @@ class PantallaJuego:
                     for moneda in self.monedas[:]:  
                         if moneda.verificarClick((mouseX, mouseY), tamañoCelda, offsetX, offsetY):
                             puntosGanados += moneda.valor
+                            moneda_clickeada = True
                             print(f"💰 ¡Moneda de {moneda.valor} recogida!")
                     
                     if puntosGanados > 0:
                         self.dinero += puntosGanados
                         # Eliminar monedas clickeadas
                         self.monedas = [m for m in self.monedas if not m.clickeada]
+                        continue  # No procesar más eventos si se clickeó una moneda
+
+                # Lógica de click en el tablero (Colocar/Quitar)
+                # Solo si NO se clickeó una moneda
+                if self.estadoJuego in ("CONFIGURACION", "JUGANDO") and not moneda_clickeada:
+                    casilla = self.obtenerCasillaClick(mouseX, mouseY)
+                    if casilla:
+                        fila, columna = casilla
+                        
+                        if evento.button == 1:  # Click izquierdo: Colocar
+                            self.colocarTorre(fila, columna)
+                        elif evento.button == 3:  # Click derecho: Quitar
+                            self.quitarTorre(fila, columna)
 
     # === MÉTODOS DE DIBUJO ===
     
@@ -618,6 +711,29 @@ class PantallaJuego:
         
         # 3. Botón Reiniciar
         self.botonReiniciar.dibujar(self.pantalla)
+
+    def dibujarPantallaVictoria(self):
+        """Dibuja el overlay oscuro, el mensaje de victoria y el botón de Jugar Otra Vez."""
+        
+        # 1. Overlay oscuro
+        overlay = pygame.Surface((self.ancho, self.alto))
+        overlay.set_alpha(200) 
+        overlay.fill((0, 0, 0))
+        self.pantalla.blit(overlay, (0, 0))
+        
+        # 2. Mensaje "¡HAZ GANADO, FELICIDADES!"
+        fuenteMensaje = pygame.font.SysFont('Arial', 80, bold=True)
+        mensaje1 = fuenteMensaje.render("¡HAZ GANADO,", True, (0, 255, 0))  # Verde
+        mensaje2 = fuenteMensaje.render("FELICIDADES!", True, (255, 215, 0))  # Dorado
+        
+        mensaje1Rect = mensaje1.get_rect(center=(self.ancho // 2, self.alto // 2 - 100))
+        mensaje2Rect = mensaje2.get_rect(center=(self.ancho // 2, self.alto // 2 - 20))
+        
+        self.pantalla.blit(mensaje1, mensaje1Rect)
+        self.pantalla.blit(mensaje2, mensaje2Rect)
+        
+        # 3. Botón Jugar Otra Vez
+        self.botonJugarOtraVez.dibujar(self.pantalla)
 
     def dibujarDinero(self):
         """Muestra el dinero actual del jugador debajo del botón Iniciar Juego"""
@@ -789,7 +905,7 @@ class PantallaJuego:
         # 3. Dibujo de Torres/Avatars
         if self.estadoJuego == "CONFIGURACION":
             self.dibujarTorresMatriz() 
-        elif self.estadoJuego in ("JUGANDO", "PERDIDO"):
+        elif self.estadoJuego in ("JUGANDO", "PERDIDO", "GANADO"):
             if self.gestorTorres:
                 self.gestorTorres.dibujar(self.pantalla)
             if self.gestorAvatars:
@@ -816,7 +932,7 @@ class PantallaJuego:
             self.botonIniciar.dibujar(self.pantalla) 
         
         # 5. Dinero y Estadísticas 
-        if self.estadoJuego != "PERDIDO":
+        if self.estadoJuego not in ("PERDIDO", "GANADO"):
             self.dibujarDinero()
             if self.estadoJuego == "JUGANDO":
                 self.dibujarEstadisticas()
@@ -829,6 +945,10 @@ class PantallaJuego:
         # 7. PANTALLA DE DERROTA
         if self.estadoJuego == "PERDIDO":
             self.dibujarPantallaDerrota()
+        
+        # 8. PANTALLA DE VICTORIA (NUEVA)
+        if self.estadoJuego == "GANADO":
+            self.dibujarPantallaVictoria()
         
         # Actualizar pantalla
         pygame.display.flip()

@@ -211,5 +211,49 @@
         "tieneFotoRegistrada": true,
         "rutaFoto": "dataBase\\imagenes\\bebe2.png",
         "foto": "dataBase\\imagenes\\bebe2.png"
+    },
+    {
+        "nombre": "luis",
+        "apellidos": "luis",
+        "usuario": "luis12",
+        "email": "gAAAAABpF7HfUPcU9EGFbtd5x93rwAR1m2TThJNZJdCdWpAgy9K-mz-rpG4J4vGHCXxRpdoWPuFpaqi6tG0QmxPpef5unLg7Yw==",
+        "contrasenaHash": "$2b$12$TrhpFIX6AmD0zJPX9t474OS3ZJfaGw8voOZokcuMLGLGVBqdZAYOS",
+        "fechaNacimiento": "14/11/2014",
+        "telefono": "gAAAAABpF7Hfc8ybvSKOurK4DqlnQj0N-WZ6TQ5jJ4Mg0O9pSEE0qhch07Kt4xXOt7MZS_sAnI6HVV6LLNMMhSjlBS4pKsXp1BKUoha3A_YMm7Mb88NULYM=",
+        "preguntaSeguridad": "¿Cuál es el mejor equipo de futbol?",
+        "respuestaSeguridad": "gAAAAABpF7HfQh86oEwcsk29WEufA5DNChI5QNS2_Cjp5l1_etW8cqKOngHAZZ9J6zXWTQbLYlvpYKIDHbwNzoRUDOFNt329Bg==",
+        "personalizado": true,
+        "fechaRegistro": "14/11/2025 16:49:03",
+        "mmaa": "gAAAAABpF7HfRmne3B3bkkduTBJ8sTZiMB-M9hyzV7shwQy-jXRvZTm4mEk4QATCuUc928x_-79FCCE4lhDMbBCIfB4dLv3HRw==",
+        "colorFondo": [
+            255,
+            153,
+            157
+        ],
+        "colorFondo_nombre": "Rosa Muy Claro"
+    },
+    {
+        "nombre": "hola",
+        "apellidos": "hola",
+        "usuario": "hola23",
+        "email": "gAAAAABpF7S90eRBYbZsj7hd7O7zeZXLTXMRL8-nlpNR8EadoRcmHSTBa0oh5UVfgQOVZ7tNZ_M4LxM8bX6zsFLonVBupi8tJw==",
+        "contrasenaHash": "$2b$12$pN0Uvy8J62yeU1sDfd5UTOzz//P/xVdDPb9rh.J/5dg/6S8xkmBHW",
+        "fechaNacimiento": "14/11/2014",
+        "telefono": "gAAAAABpF7S9reN9DiYqRhKJ9UGUKQrt13FaGNB0tPqRqxTvZo-EOnTOWO6TntBozwxLnLOMMiix8IndkEEv_kdmajaXw_DtH7VDAMwbUgWPuniayf5qGWk=",
+        "preguntaSeguridad": "¿Cuál es el mejor equipo de futbol?",
+        "respuestaSeguridad": "gAAAAABpF7S9vA3en_3i_dB3l1jRcIxNSi50y1QpUSdkg84n2t0KnIWCq0zpRP-HHKKhVsSi2uDuyBoNvpGDehuSHjEQQDzC1A==",
+        "personalizado": true,
+        "fechaRegistro": "14/11/2025 17:01:17",
+        "mmaa": "gAAAAABpF7S9QY1y09mu8yEmec-EcM08Bl3Ww1FoHaBev2TIM1ke9yZAqrfMpN3WCbxNKfmiCEqUjC9_On41Qsxiq9jxiN4gZQ==",
+        "colorFondo": [
+            255,
+            153,
+            157
+        ],
+        "colorFondo_nombre": "Rosa Muy Claro",
+        "tarjetaCredito": "",
+        "cvv": "",
+        "fechaCaducidad": "",
+        "tieneFotoRegistrada": false
     }
 ]

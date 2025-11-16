@@ -40,5 +40,17 @@
         "tema": "Claro (Predeterminado)",
         "volumen": 59,
         "ultima_cancion": "spotify:track:1LiN0Z98FkR1t0m8KmLcAH"
+    },
+    "luis12": {
+        "color_fondo": "Rosa Muy Claro",
+        "tema": "Claro (Predeterminado)",
+        "volumen": 86,
+        "ultima_cancion": "spotify:track:4bw8mcDUSRWfQo63ZTYRnU"
+    },
+    "hola23": {
+        "color_fondo": "Rosa Muy Claro",
+        "tema": "Claro (Predeterminado)",
+        "volumen": 49,
+        "ultima_cancion": "spotify:track:5kKD7cAyb8ag6SIaGkibJf"
     }
 }

@@ -35,18 +35,39 @@ class Moneda:
         # Borde más oscuro
         pygame.draw.circle(pantalla, (218, 165, 32), (posX, posY), self.radio, 2)
 
-def generarMonedas(cantidad=3):
-    """Genera una lista de monedas en posiciones aleatorias del tablero
+def generarMonedas(cantidad=3, gridFilas=9, gridColumnas=5):
+    """Genera una lista de monedas en posiciones aleatorias dentro del grid de juego
     
+    El total de monedas generadas no excederá 100 puntos de valor
     Denominaciones posibles: 25, 50, 100 puntos
-    Con 3 monedas se generan exactamente 100 puntos (25+25+50 ó 25+50+25, etc.)
     """
     monedas = []
     valores_disponibles = [25, 50, 100]
+    total_valor = 0
+    limite_valor = 100
     
     for _ in range(cantidad):
-        x = random.uniform(0.5, 4.5)  # Posiciones dentro del tablero 5x9
-        y = random.uniform(0.5, 8.5)  # Evita bordes
-        valor = random.choice(valores_disponibles)  # Valores posibles: 25, 50, 100
+        # Generar dentro del grid (0 a columnas-1, 0 a filas-1)
+        x = random.uniform(0.5, gridColumnas - 0.5)
+        y = random.uniform(0.5, gridFilas - 0.5)
+        
+        # Seleccionar valor que no exceda el límite
+        valor = random.choice(valores_disponibles)
+        
+        # Si agregar esta moneda excedería el límite, ajustar el valor
+        if total_valor + valor > limite_valor:
+            # Calcular cuánto valor queda disponible
+            valor_restante = limite_valor - total_valor
+            if valor_restante >= 25:
+                valor = min(valor, valor_restante)
+            else:
+                continue  # No agregar más monedas si no queda valor suficiente
+        
+        total_valor += valor
         monedas.append(Moneda(x, y, valor))
+        
+        # Si alcanzamos el límite, dejar de generar monedas
+        if total_valor >= limite_valor:
+            break
+    
     return monedas
