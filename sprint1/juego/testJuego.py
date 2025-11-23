@@ -20,7 +20,7 @@ sys.path.insert(0, carpeta_sprint1)
 from personalizacion.fondo import ColoresFondoDisponibles
 from personalizacion.temas import ConfiguracionTemas
 from personalizacion.constantes import PANTALLA_COMPLETA
-from juego.pantallaJuego import PantallaJuego
+from pantallaJuego import PantallaJuego
 
 # Inicializar pygame
 pygame.init()

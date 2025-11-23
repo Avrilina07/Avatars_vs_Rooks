@@ -21,7 +21,9 @@ sys.path.insert(0, carpeta_salon_fama)
 from constantes import FPS
 from componentes import Boton
 from clasesAvatarsRooks import Avatars, Rooks
-from logicaAvatarsRooks import GestorAvatars, GestorTorres
+from GestorAvatars import GestorAvatars
+from GestorTorres import GestorTorres
+from Proyectil import Proyectil
 from coins import generarMonedas
 from algoritmoDelBanquero import calcularYGuardarPuntajeDesdeSpotify
 
@@ -91,7 +93,7 @@ class PantallaJuego:
             "T1": self.rooks.torreArena, "T2": self.rooks.torreRoca,
             "T3": self.rooks.torreFuego, "T4": self.rooks.torreAgua
         }
-        self.dinero = 3500
+        self.dinero = 350  # Dinero inicial correcto
         self.monedas = []
         self.puntosParaMonedas = 0  
         self.umbralMonedas = 100     
@@ -204,18 +206,12 @@ class PantallaJuego:
                 self.imagenes_torres[nombre] = pygame.image.load(ruta).convert_alpha()
 
             # --- PROYECTILES ---
-            # Se asume que los nombres de los archivos de proyectiles son T1.png, T2.png, etc.
-            # Sin embargo, el código original usa nombres largos, los mantendré aquí:
             mapa_proyectiles = {
                 "T1": "Ataque_arena", "T2": "Ataque_roca",
                 "T3": "Ataque_fuego", "T4": "Ataque_agua"
             }
-            # *** NOTA IMPORTANTE: Si los proyectiles se llaman T1.png, T2.png, etc.
-            # *** Debes cambiar el mapeo arriba a:
-            # *** mapa_proyectiles = {"T1": "T1", "T2": "T2", ...} 
             
             for tipo_torre, nombre_archivo in mapa_proyectiles.items():
-                # El archivo de imagen se llama Ataque_arena.png, Ataque_roca.png, etc.
                 ruta = os.path.join(ruta_base, f"{nombre_archivo}.png")
                 self.imagenes_proyectiles[tipo_torre] = pygame.image.load(ruta).convert_alpha()
 
@@ -322,7 +318,7 @@ class PantallaJuego:
         # 1. Resetear variables de juego
         self.matriz = [[None for _ in range(self.columnas)] for _ in range(self.filas)]
         self.torreSeleccionada = None
-        self.dinero = 3500
+        self.dinero = 350  # Dinero inicial correcto
         self.gestorAvatars = None
         self.gestorTorres = None
         self.juegoIniciado = False
@@ -386,10 +382,9 @@ class PantallaJuego:
         stats = self.gestorAvatars.obtenerEstadisticas()
         
         if stats["perdio"] or stats["gano"]:
-            # Calcular y guardar puntaje usando el algoritmo del banquero
-            # El usuario se obtiene automáticamente de session_user.json
-            # Tempo y popularidad se obtienen de spotify_api
+            #Agregar parámetro usuario
             puntaje = calcularYGuardarPuntajeDesdeSpotify(
+                usuario=self.usuarioTexto,  # ✅ Nombre del usuario logueado
                 avatarsMatados=self.gestorAvatars.avatarsMatados,
                 puntosParaMonedas=self.puntosParaMonedas,
                 limiteMaximo=1000

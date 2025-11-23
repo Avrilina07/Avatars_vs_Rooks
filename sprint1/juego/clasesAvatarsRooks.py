@@ -6,14 +6,14 @@ class Avatars:
     def __init__(self):
         # Definición de los 4 avatars
         self.flechador = {
-            "vida": 5,
-            "daño": 1,
-            "duracion_aparicion": 17,
-            "duracion_ataque_min": 1,  
-            "duracion_ataque_max": 5  
-            ,
-            "puntos": 25  # Avatar débil: 25 puntos
-        } 
+        "vida": 5,              
+        "daño": 1,                
+        "duracion_aparicion": 3,  
+        "duracion_ataque_min": 2,  
+        "duracion_ataque_max": 4,  
+            "puntos": 25,
+            "rango_ataque": 3        
+            }  
         self.escudero = {
             "vida": 10,
             "daño": 2,
