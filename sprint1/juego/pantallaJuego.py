@@ -4,6 +4,13 @@ import os
 import subprocess
 import runpy
 import json
+import socket
+import threading
+import time 
+
+# --- CONFIGURACIÓN DE RED DEL SERVIDOR (CONSOLA) ---
+UDP_IP = '0.0.0.0'       # Escucha en todas las interfaces disponibles
+UDP_PORT = 8080          # Debe coincidir con el puerto del control (Pico W)
 
 # Configuración para que el módulo encuentre las carpetas necesarias
 carpeta_actual = os.path.dirname(os.path.abspath(__file__))
@@ -17,7 +24,7 @@ sys.path.insert(0, carpeta_personalizacion)
 carpeta_salon_fama = os.path.join(carpeta_padre, 'salonDeFama')
 sys.path.insert(0, carpeta_salon_fama)
 
-# Importaciones necesarias
+# Importaciones necesarias (Asegúrate de que estas clases y constantes existan)
 from constantes import FPS
 from componentes import Boton
 from clasesAvatarsRooks import Avatars, Rooks
@@ -74,6 +81,18 @@ class PantallaJuego:
         self.imagenTablero = self.cargarImagenTablero()
         self.matriz = [[None for _ in range(self.columnas)] for _ in range(self.filas)]
         self.torreSeleccionada = None
+
+        # === ESTADO DEL CONTROL REMOTO (NUEVO) ===
+        self.control_activo = False
+        self.control_fila = self.filas // 2       # Inicia en el centro
+        self.control_columna = self.columnas // 2 # Inicia en el centro
+        
+        # Para evitar movimientos muy rápidos con el joystick
+        self.tiempo_ultimo_movimiento = time.time()
+        self.retardo_movimiento = 0.15 # 150ms entre movimientos
+        
+        # Inicialización del servidor UDP y el hilo de escucha
+        self.inicializar_servidor_control()
 
         # === CARGA DE IMÁGENES DEL JUEGO ===
         self.imagenes_torres = {}
@@ -138,6 +157,107 @@ class PantallaJuego:
         self.fuenteFama = pygame.font.SysFont('Arial', 14, bold=True)
 
 
+    # === MÉTODOS DE CONEXIÓN INALÁMBRICA (NUEVO) ===
+    
+    def inicializar_servidor_control(self):
+        """Inicializa el socket UDP y lanza el hilo de escucha."""
+        try:
+            self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+            self.control_socket.bind((UDP_IP, UDP_PORT))
+            self.control_socket.settimeout(0.5) 
+            print(f"📡 Servidor UDP iniciado en {UDP_IP}:{UDP_PORT}")
+            
+            # Lanzar hilo de escucha 
+            self.control_thread = threading.Thread(target=self.escuchar_control, daemon=True)
+            self.control_thread.start()
+            self.control_activo = True
+            
+        except Exception as e:
+            print(f"❌ Error al iniciar el servidor UDP: {e}")
+            self.control_activo = False
+            self.control_socket = None
+
+    def escuchar_control(self):
+        """Hilo que escucha constantemente los comandos del control."""
+        print("🎧 Hilo de escucha del control iniciado.")
+        
+        while self.ejecutando: 
+            try:
+                data, addr = self.control_socket.recvfrom(1024) 
+                mensaje = data.decode('utf-8')
+                self.procesar_comando_control(mensaje)
+                
+            except socket.timeout:
+                pass
+            except Exception as e:
+                if self.ejecutando:
+                    print(f"Error en hilo de control: {e}")
+                time.sleep(0.1)
+        
+        print("🛑 Hilo de escucha del control finalizado.")
+
+    def procesar_comando_control(self, mensaje):
+        """
+        Analiza el mensaje recibido (X, Y, B1...B6) y actualiza la posición/ejecuta acciones.
+        """
+        if self.estadoJuego in ("PERDIDO", "GANADO"):
+            return 
+            
+        try:
+            partes = mensaje.split(',')
+            # Verifica el formato: X, Y, B1, B2, B3, B4, B5, B6 (8 partes)
+            if len(partes) != 8: return
+
+            x_joy = int(partes[0])
+            y_joy = int(partes[1])
+            botones = [int(b) for b in partes[2:]]
+            
+            tiempo_actual = time.time()
+            movido = False
+            
+            # --- 1. LÓGICA DE MOVIMIENTO DE CURSOR (JOYSTICK) ---
+            if tiempo_actual - self.tiempo_ultimo_movimiento > self.retardo_movimiento:
+                
+                # Y -> Fila (Arriba/Abajo). -50 para arriba (Y neg), +50 para abajo (Y pos)
+                if y_joy < -50 and self.control_fila > 0: 
+                    self.control_fila -= 1
+                    movido = True
+                elif y_joy > 50 and self.control_fila < self.filas - 1: 
+                    self.control_fila += 1
+                    movido = True
+                    
+                # X -> Columna (Izquierda/Derecha). +50 para derecha, -50 para izquierda
+                elif x_joy > 50 and self.control_columna < self.columnas - 1: 
+                    self.control_columna += 1
+                    movido = True
+                elif x_joy < -50 and self.control_columna > 0: 
+                    self.control_columna -= 1
+                    movido = True
+                
+                if movido:
+                    self.tiempo_ultimo_movimiento = tiempo_actual
+
+            # --- 2. LÓGICA DE BOTONES (SELECCIÓN Y ACCIÓN) ---
+            
+            # Botones 1 a 4: Seleccionan Torre T1 a T4
+            for i in range(4):
+                if botones[i] == 1:
+                    self.torreSeleccionada = f"T{i+1}"
+                    break
+                        
+            # Botón 5: Colocar Torre (Click Izquierdo)
+            if botones[4] == 1 and self.estadoJuego in ("CONFIGURACION", "JUGANDO"):
+                self.colocarTorre(self.control_fila, self.control_columna)
+            
+            # Botón 6: Quitar Torre (Click Derecho)
+            if botones[5] == 1 and self.estadoJuego in ("CONFIGURACION", "JUGANDO"):
+                self.quitarTorre(self.control_fila, self.control_columna)
+                
+        except ValueError:
+             pass
+        except Exception:
+             pass
+    
     # === MÉTODOS DE UTILIDAD ===
     
     def obtenerUsuarioLogueado(self):
@@ -384,7 +504,7 @@ class PantallaJuego:
         if stats["perdio"] or stats["gano"]:
             #Agregar parámetro usuario
             puntaje = calcularYGuardarPuntajeDesdeSpotify(
-                usuario=self.usuarioTexto,  # ✅ Nombre del usuario logueado
+                usuario=self.usuarioTexto,  # Nombre del usuario logueado
                 avatarsMatados=self.gestorAvatars.avatarsMatados,
                 puntosParaMonedas=self.puntosParaMonedas,
                 limiteMaximo=1000
@@ -688,6 +808,27 @@ class PantallaJuego:
 
     # === MÉTODOS DE DIBUJO ===
     
+    def dibujarCursorControl(self):
+        """Dibuja el recuadro que indica la posición seleccionada por el control remoto."""
+        if not self.control_activo or self.estadoJuego not in ("CONFIGURACION", "JUGANDO"):
+            return
+
+        gridX = self.tableroX + self.gridOffsetX
+        gridY = self.tableroY + self.gridOffsetY
+        anchoCasilla = self.anchoCasilla + self.gridAnchoExtra
+        altoCasilla = self.altoCasilla + self.gridAltoExtra
+
+        # Calcular coordenadas del recuadro
+        x = gridX + self.control_columna * anchoCasilla
+        y = gridY + self.control_fila * altoCasilla
+        
+        # Dibujar un recuadro de selección amarillo brillante
+        grosor = 4
+        color_cursor = (255, 255, 0)
+        
+        pygame.draw.rect(self.pantalla, color_cursor, 
+                         (x, y, anchoCasilla, altoCasilla), grosor)
+    
     def dibujarPantallaDerrota(self):
         """Dibuja el overlay oscuro, el mensaje de derrota y el botón de Reiniciar."""
         
@@ -742,7 +883,7 @@ class PantallaJuego:
         y = self.botonIniciar.rect.bottom + 40  
         rect = render.get_rect(center=(x, y))
         self.pantalla.blit(render, rect)
-    
+
     def dibujarBarraMonedas(self):
         """Dibuja barra de progreso de puntos hacia las monedas (solo en JUGANDO)"""
         if self.estadoJuego != "JUGANDO":
@@ -896,6 +1037,9 @@ class PantallaJuego:
         # 2. Tablero, grid
         if self.imagenTablero:
             self.pantalla.blit(self.imagenTablero, (self.tableroX, self.tableroY))
+        
+        # 2.5 DIBUJAR CURSOR DEL CONTROL
+        self.dibujarCursorControl() 
         
         # 3. Dibujo de Torres/Avatars
         if self.estadoJuego == "CONFIGURACION":
